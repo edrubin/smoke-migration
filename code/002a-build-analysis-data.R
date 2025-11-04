@@ -9,7 +9,7 @@
   p_load(parallel, fastverse, fst, fixest, magrittr, here)
   fastverse_extend(topics = c('SP', 'DT', 'ST'))
   # Add directory of SafeGraph data
-  dir_sg = '/media/edwardrubin/Data/SafeGraph'
+  dir_sg = here()
 
 
 # Load data: County shapefiles -----------------------------------------------------------
@@ -212,6 +212,19 @@
     lag4_pct_smoke_medium = flag(pct_smoke_medium, n = 4),
     lag4_pct_smoke_high = flag(pct_smoke_high, n = 4)
   ), by = cbg_home]
+  full_dt[, `:=`(
+    lag5_any_smoke = flag(any_smoke, n = 5),
+    lag5_any_smoke_low = flag(any_smoke_low, n = 5),
+    lag5_any_smoke_medium = flag(any_smoke_medium, n = 5),
+    lag5_any_smoke_high = flag(any_smoke_high, n = 5),
+    lag5_any_smoke_mh = flag(any_smoke_mh, n = 5),
+    lag5_smoke_low_home = flag(ndays_smoke_low, n = 5),
+    lag5_smoke_medium_home = flag(ndays_smoke_medium, n = 5),
+    lag5_smoke_high_home = flag(ndays_smoke_high, n = 5),
+    lag5_pct_smoke_low = flag(pct_smoke_low, n = 5),
+    lag5_pct_smoke_medium = flag(pct_smoke_medium, n = 5),
+    lag5_pct_smoke_high = flag(pct_smoke_high, n = 5)
+  ), by = cbg_home]
 
 
 # Data work: Add leads -------------------------------------------------------------------
@@ -269,49 +282,84 @@
     lead4_pct_smoke_medium = flag(pct_smoke_medium, n = -4),
     lead4_pct_smoke_high = flag(pct_smoke_high, n = -4)
   ), by = cbg_home]
+  full_dt[, `:=`(
+    lead5_any_smoke = flag(any_smoke, n = -5),
+    lead5_any_smoke_low = flag(any_smoke_low, n = -5),
+    lead5_any_smoke_medium = flag(any_smoke_medium, n = -5),
+    lead5_any_smoke_high = flag(any_smoke_high, n = -5),
+    lead5_any_smoke_mh = flag(any_smoke_mh, n = -5),
+    lead5_smoke_low_home = flag(ndays_smoke_low, n = -5),
+    lead5_smoke_medium_home = flag(ndays_smoke_medium, n = -5),
+    lead5_smoke_high_home = flag(ndays_smoke_high, n = -5),
+    lead5_pct_smoke_low = flag(pct_smoke_low, n = -5),
+    lead5_pct_smoke_medium = flag(pct_smoke_medium, n = -5),
+    lead5_pct_smoke_high = flag(pct_smoke_high, n = -5)
+  ), by = cbg_home]
 
 
 # Load data: Census datasets from SafeGraph ----------------------------------------------
   # Load datasets
-  c01 = file.path(
-    dir_sg,
-    'sg-census', 'safegraph_open_census_data_2019', 'data',
-    'cbg_b01.csv'
-  ) %>% fread(
-    select = c(census_block_group = 'character', B01003e1 = 'integer')
-  )
+  c01 =
+    here(
+      'data-raw', 'sg-census', 'safegraph_open_census_data_2019', 'data',
+      'cbg_b01.csv'
+    ) |>
+    fread(
+      select = c(
+        census_block_group = 'character',
+        B01003e1 = 'integer'
+      )
+    )
   setnames(c01, c('cbg', 'pop'))
-  c02 = file.path(
-    dir_sg,
-    'sg-census', 'safegraph_open_census_data_2019', 'data',
-    'cbg_b02.csv'
-  ) %>% fread(
-    select = c(census_block_group = 'character', B02008e1 = 'integer', B02009e1 = 'integer')
-  )
+  c02 =
+    here(
+      'data-raw', 'sg-census', 'safegraph_open_census_data_2019', 'data',
+      'cbg_b02.csv'
+    ) |>
+    fread(
+      select = c(
+        census_block_group = 'character',
+        B02008e1 = 'integer',
+        B02009e1 = 'integer'
+      )
+    )
   setnames(c02, c('cbg', 'pop_white', 'pop_black'))
-  c03 = file.path(
-    dir_sg,
-    'sg-census', 'safegraph_open_census_data_2019', 'data',
-    'cbg_b03.csv'
-  ) %>% fread(
-    select = c(census_block_group = 'character', B03002e12 = 'integer')
-  )
+  c03 =
+    here(
+      'data-raw', 'sg-census', 'safegraph_open_census_data_2019', 'data',
+      'cbg_b03.csv'
+    ) |>
+    fread(
+      select = c(
+        census_block_group = 'character',
+        B03002e12 = 'integer'
+      )
+    )
   setnames(c03, c('cbg', 'pop_hispanic'))
-  c19 = file.path(
-    dir_sg,
-    'sg-census', 'safegraph_open_census_data_2019', 'data',
-    'cbg_b19.csv'
-  ) %>% fread(
-    select = c(census_block_group = 'character', B19013e1 = 'integer')
-  )
+  c19 =
+    here(
+      'data-raw', 'sg-census', 'safegraph_open_census_data_2019', 'data',
+      'cbg_b19.csv'
+    ) |>
+    fread(
+      select = c(
+        census_block_group = 'character',
+        B19013e1 = 'integer'
+      )
+    )
   setnames(c19, c('cbg', 'hh_inc'))
-  c23 = file.path(
-    dir_sg,
-    'sg-census', 'safegraph_open_census_data_2019', 'data',
-    'cbg_b23.csv'
-  ) %>% fread(
-    select = c(census_block_group = 'character', B23025e1 = 'integer', B23025e2 = 'integer')
-  )
+  c23 =
+    here(
+      'data-raw', 'sg-census', 'safegraph_open_census_data_2019', 'data',
+      'cbg_b23.csv'
+    ) |>
+    fread(
+      select = c(
+        census_block_group = 'character',
+        B23025e1 = 'integer',
+        B23025e2 = 'integer'
+      )
+    )
   setnames(c23, c('cbg', 'pop_employable', 'pop_employed'))
   # Merge datasets
   cbg_dt =
