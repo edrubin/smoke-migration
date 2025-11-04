@@ -8,8 +8,6 @@
   library(pacman)
   p_load(parallel, fastverse, fst, fixest, magrittr, here)
   fastverse_extend(topics = c('SP', 'DT', 'ST'))
-  # Add directory of SafeGraph data
-  dir_sg = here()
 
 
 # Load data: County shapefiles -----------------------------------------------------------
@@ -17,7 +15,7 @@
   tl_sf =
     here(
       'data-raw', 'census', 'tl_2016_us_county', 'tl_2016_us_county.shp'
-    ) %>%
+    ) |>
     st_read(
       stringsAsFactors = FALSE,
       # Limit to counties in contiguous 48 states (plus DC)
@@ -26,27 +24,29 @@
         'FROM \"tl_2016_us_county\"',
         "WHERE STATEFP NOT IN ('02', '15', '60', '66', '69', '72', '78')"
       )
-    ) %>%
+    ) |>
     dplyr::transmute(fips = GEOID)
   # Load cartographic boundary county shape file
-  cb_sf = here(
-    'data-raw', 'census', 'cb_2016_us_county_500k', 'cb_2016_us_county_500k.shp'
-  ) %>% st_read(
-    stringsAsFactors = FALSE,
-    # Limit to counties in contiguous 48 states (plus DC)
-    query = paste(
-      'SELECT GEOID',
-      'FROM \"cb_2016_us_county_500k\"',
-      "WHERE STATEFP NOT IN ('02', '15', '60', '66', '69', '72', '78')"
-    )
-  ) %>%
-  dplyr::transmute(fips = GEOID)
+  cb_sf =
+    here(
+      'data-raw', 'census', 'cb_2016_us_county_500k', 'cb_2016_us_county_500k.shp'
+    ) |>
+    st_read(
+      stringsAsFactors = FALSE,
+      # Limit to counties in contiguous 48 states (plus DC)
+      query = paste(
+        'SELECT GEOID',
+        'FROM \"cb_2016_us_county_500k\"',
+        "WHERE STATEFP NOT IN ('02', '15', '60', '66', '69', '72', '78')"
+      )
+    ) |>
+    dplyr::transmute(fips = GEOID)
 
 
 # Data work: County areas ----------------------------------------------------------------
   # Add county area to each of the spatial datasets
-  tl_areas = tl_sf %>% st_area()
-  cb_areas = cb_sf %>% st_area()
+  tl_areas = tl_sf |> st_area()
+  cb_areas = cb_sf |> st_area()
   # Convert shapefiles to data tables (for merging)
   setDT(tl_sf)
   setDT(cb_sf)
@@ -65,16 +65,18 @@
 
 # Load data: Smoke-week dataset ----------------------------------------------------------
   # Load the dataset
-  full_dt = here(
-    'data-processed', 'for-analysis', 'cbg-visit-smoke-week.fst'
-  ) %>% read_fst(as.data.table = TRUE)
+  full_dt =
+    here(
+      'data-processed', 'for-analysis', 'cbg-visit-smoke-week.fst'
+    ) |> read_fst(as.data.table = TRUE)
 
 
 # Load data: Hospital visits ------------------------------------------------------------
   # Load the dataset
-  hospitals_dt = here(
-    'data-processed', 'cbg-hospital-visits', 'all-cbg-hospital-visits.fst'
-  ) %>% read_fst(as.data.table = TRUE)
+  hospitals_dt =
+    here(
+      'data-processed', 'cbg-hospital-visits', 'all-cbg-hospital-visits.fst'
+    ) |> read_fst(as.data.table = TRUE)
 
 
 # Merge: Movement and hospital visits ----------------------------------------------------
@@ -82,12 +84,13 @@
   setkey(full_dt, cbg_home, date_start)
   setkey(hospitals_dt, cbg_home, date_start)
   # Merge
-  full_dt %<>% merge(
-    y = hospitals_dt,
-    by = c('cbg_home', 'date_start'),
-    all.x = TRUE,
-    all.y = FALSE
-  )
+  full_dt %<>%
+    merge(
+      y = hospitals_dt,
+      by = c('cbg_home', 'date_start'),
+      all.x = TRUE,
+      all.y = FALSE
+    )
   # Fill in NAs of visits with 0s (missing means and empty intersection)
   full_dt[is.na(hospital_visits_total), `:=`(
     hospital_visits_total = 0,
@@ -146,10 +149,11 @@
 
 # Data work: Balance the panel -----------------------------------------------------------
   # Count CBGs' numbers of weeks in the sample
-  cbg_dt = full_dt[, .(
-    n_weeks = .N,
-    total_visits = fsum(total_visits)
-  ), by = cbg_home]
+  cbg_dt =
+    full_dt[, .(
+      n_weeks = .N,
+      total_visits = fsum(total_visits)
+    ), by = cbg_home]
   # Only keep CBGs with all weeks (98.5% of CBGs and 99.8% of population)
   # For visits: we keep 22,815,726,329 out of 22,870,872,528 visits
   max_weeks = cbg_dt[, fmax(n_weeks)]
@@ -408,13 +412,17 @@
 
 # Load data: Census data from NHGIS ------------------------------------------------------
   # Load the dataset descriptions
-  nhgis_desc = here(
-    'data-raw', 'nhgis', 'nhgis0036_ds172_2010_blck_grp.csv'
-  ) %>% fread(nrows = 2)
+  nhgis_desc =
+    here(
+      'data-raw', 'nhgis', 'nhgis0036_ds172_2010_blck_grp.csv'
+    ) |>
+    fread(nrows = 2)
   # Load the dataset
-  nhgis_dt = here(
-    'data-raw', 'nhgis', 'nhgis0036_ds172_2010_blck_grp.csv'
-  ) %>% fread(skip = 2, header = FALSE)
+  nhgis_dt =
+    here(
+      'data-raw', 'nhgis', 'nhgis0036_ds172_2010_blck_grp.csv'
+    ) |>
+    fread(skip = 2, header = FALSE)
   setnames(nhgis_dt, names(nhgis_desc))
   # Create CBG FIPS code
   nhgis_dt %<>% .[, .(
@@ -432,25 +440,27 @@
   # Merge to the full dataset
   setkey(nhgis_dt, cbg_home)
   setkey(full_dt, cbg_home)
-  full_dt %<>% merge(
-    y = nhgis_dt,
-    by = 'cbg_home',
-    all.x = TRUE,
-    all.y = FALSE
-  )
+  full_dt %<>%
+    merge(
+      y = nhgis_dt,
+      by = 'cbg_home',
+      all.x = TRUE,
+      all.y = FALSE
+    )
   # Clean up
   invisible(gc())
 
 
 # Data work: Add county areas ------------------------------------------------------------
   # Merge
-  full_dt %<>% merge(
-    y = area_dt,
-    by = 'county',
-    all.x = TRUE,
-    all.y = FALSE,
-    sort = FALSE
-  )
+  full_dt %<>%
+    merge(
+      y = area_dt,
+      by = 'county',
+      all.x = TRUE,
+      all.y = FALSE,
+      sort = FALSE
+    )
   # Clean up
   invisible(gc())
 
