@@ -13,14 +13,14 @@
   here::here('code', '002b-prep-analysis-data.R') |> source()
 
 
-# Regression: Event study, new approach --------------------------------------------------
+# Event study: Paired smoke and non-smoke weeks ------------------------------------------
 # ADJUST Toggle to subset to post-event periods with all smoke
   # post_all_smoke = TRUE
   post_all_smoke = FALSE
   # Build event-study dataset
   # Set event-study length
-  n_pre = 6
-  n_post = 6
+  n_pre = 3
+  n_post = 3
   n = n_pre + n_post + 1
   # Build dataset for finding smoke 'periods'
   event_dt = full_dt[, .(cbg_home, date_start, any_smoke)]
@@ -38,44 +38,54 @@
     any_smoke_lead_n = flag(any_smoke, n = -n_post)
   ), by = cbg_home]
   # Subset 1: Periods with smoke at time '0' and no smoke n_pre periods before
-  smoke_dt = event_dt[(
-    any_smoke == 1 &
-    counter_smoke_lag_n == counter_smoke - 1 &
-    any_smoke_lag_n == 0
-  )]
+  smoke_dt =
+    event_dt[(
+      any_smoke == 1 &
+      counter_smoke_lag_n == counter_smoke - 1 &
+      any_smoke_lag_n == 0
+    )]
   # If desired: Subset to periods where all of 'post' included smoke
   if (post_all_smoke == TRUE) {
     smoke_dt %<>% .[counter_smoke_lead_n == counter_smoke + n_post]
   }
   # Subset 2: Periods without smoke at time '0' and no smoke before or after np periods
-  nosmoke_dt = event_dt[(
-    any_smoke == 0 &
-    counter_smoke_lag_n == counter_smoke &
-    counter_smoke_lead_n == counter_smoke &
-    any_smoke_lag_n == 0
+  nosmoke_dt =
+    event_dt[(
+      any_smoke == 0 &
+      counter_smoke_lag_n == counter_smoke &
+      counter_smoke_lead_n == counter_smoke &
+      any_smoke_lag_n == 0
+    )]
+  # Add subset indicators and calendar week
+  smoke_dt[, `:=`(
+    subset = 'smoke',
+    wk = week(date_start)
   )]
-  # Stack
-  smoke_dt[, subset := 'smoke']
-  nosmoke_dt[, subset := 'nosmoke']
+  nosmoke_dt[, `:=`(
+    subset = 'nosmoke',
+    wk = week(date_start)
+  )]
   # Combine datasets
-  event_dt = rbindlist(list(smoke_dt, nosmoke_dt))
+  event_dt = rbindlist(list(smoke_dt, nosmoke_dt), use.names = TRUE, fill = TRUE)
   # Find matches (match on week of year and home CBG)
-  match_dt = merge(
-    smoke_dt[, .(cbg_home, wk = week(date_start), in_smoke = 1)],
-    nosmoke_dt[, .(cbg_home, wk = week(date_start), in_nosmoke = 1)],
-    by = c('cbg_home', 'wk'),
-    all.x = FALSE, all.y = FALSE,
-    allow.cartesian = TRUE
-  ) |> funique()
-  # Add week (for matching)
-  event_dt[, wk := week(date_start)]
+  match_dt =
+    merge(
+      smoke_dt[, .(cbg_home, wk, in_smoke = 1)],
+      nosmoke_dt[, .(cbg_home, wk, in_nosmoke = 1)],
+      by = c('cbg_home', 'wk'),
+      all.x = FALSE,
+      all.y = FALSE,
+      allow.cartesian = TRUE
+    ) |>
+    funique()
   # Subset to matches
-  event_dt %<>% merge(
-    y = match_dt[, .(cbg_home, wk)],
-    by = c('cbg_home', 'wk'),
-    all.x = FALSE,
-    all.y = TRUE
-  )
+  event_dt %<>%
+    merge(
+      y = match_dt[, .(cbg_home, wk)],
+      by = c('cbg_home', 'wk'),
+      all.x = FALSE,
+      all.y = TRUE
+    )
   # Drop 'wk' for now
   event_dt[, wk := NULL]
   # Drop unnecessary variables
@@ -106,14 +116,24 @@
   )]
   # Create date variable with actual weeks implied by event time
   event_dt[, date_start := date_smoke_start + (event_time * 7)]
+  # Add identifier for CBG by calendar-week (for fixed effects)
+  event_dt[, `:=`(
+    cbg_wk =
+      paste0(
+        cbg_home,
+        '-',
+        week(date_smoke_start) |> str_pad(2, 'left', 0)
+      )
+  )]
   # Merge full dataset onto event-study setup
-  event_trt = merge(
-    x = event_dt,
-    y = full_dt,
-    by = c('cbg_home', 'date_start'),
-    all.x = TRUE,
-    all.y = FALSE
-  )
+  event_trt =
+    merge(
+      x = event_dt,
+      y = full_dt,
+      by = c('cbg_home', 'date_start'),
+      all.x = TRUE,
+      all.y = FALSE
+    )
   # Add dummies for each event period
   for (p in event_trt[, funique(event_period)]) {
     set(
@@ -143,7 +163,7 @@
   ), event_period]
   # Excluded period
   p_drop = paste0('p', str_pad(n_pre, 2, 'left', 0))
-# Iterate over outcome variables
+  # Iterate over outcome variables
   for (i in 1:8) {
     # Build formula
     event_f =
@@ -158,23 +178,21 @@
           'total_visits - visits_same_state ~ ',
           'any_smoke ~ '
         )[i],
-        paste(
-          str_subset(names(event_trt), '^p[0-9]{2}$') |> str_subset(p_drop, negate = TRUE),
-          collapse = ' + '
-        )
+        str_subset(names(event_trt), '^p[0-9]{2}$') |>
+          str_subset(p_drop, negate = TRUE) |>
+          paste(collapse = ' + ')
       ) |>
       as.formula()
     # Estimate!
-    event_est = feols(
-      event_f,
-      # data = event_trt[county != '06073' & i_rural == 0],
-      data = event_trt[county != '06073' & i_rural == 0 & !(cbg_home %in% fire_dt$cbg)],
-      # data = event_trt[county != '06073' & hh_inc_q %in% c('q01', 'q02', 'q03') & i_rural == 0],
-      # data = event_trt[county != '06073' & hh_inc_q %in% c('q17', 'q18', 'q19') & i_rural == 0],
-      cluster = ~county + mo ^ yr,
-      weights = ~pop,
-      split = ~subset
-    )
+    event_est =
+      feols(
+        event_f,
+        # data = event_trt[county != '06073' & i_rural == 0],
+        data = event_trt[county != '06073' & i_rural == 0 & !(cbg_home %in% fire_dt$cbg)],
+        cluster = ~county + mo ^ yr,
+        weights = ~pop,
+        split = ~subset
+      )
     # Create dataset for plotting event study
     # Build dataset with estimates and confidence intervals
     plot_dt = cbind(
