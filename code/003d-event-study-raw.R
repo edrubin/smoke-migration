@@ -13,14 +13,14 @@
   here::here('code', '002b-prep-analysis-data.R') |> source()
 
 
-# Event study: Paired smoke and non-smoke weeks ------------------------------------------
+# Set up event study: Pair smoke and non-smoke weeks within CBG ------------------------
 # ADJUST Toggle to subset to post-event periods with all smoke
   # post_all_smoke = TRUE
   post_all_smoke = FALSE
   # Build event-study dataset
   # Set event-study length
-  n_pre = 3
-  n_post = 3
+  n_pre = 5
+  n_post = 5
   n = n_pre + n_post + 1
   # Build dataset for finding smoke 'periods'
   event_dt = full_dt[, .(cbg_home, date_start, any_smoke)]
@@ -161,8 +161,34 @@
     out_state = fmean(1 - pct_same_state),
     n = .N
   ), event_period]
-  # Excluded period
-  p_drop = paste0('p', str_pad(n_pre, 2, 'left', 0))
+  # Excluded period: 1 before the end of the pre-period
+  p_drop = paste0('p', str_pad(n_pre - 1, 2, 'left', 0))
+
+
+# Estimate event study -------------------------------------------------------------------
+# TODO Clean up in-progress code below
+  # Estimate
+  test =
+    feols(
+      c(
+        1 - pct_same_county,
+        1 - pct_same_state,
+        total_visits - visits_same_county,
+        total_visits - visits_same_state,
+        any_smoke,
+        total_visits
+      ) ~
+      p01 + p02 + p03 + p05 + p06 + p07 + p08 + p09 + p10 + p11 |
+      cbg_wk + state ^ yr,
+      data = event_trt[county != '06073' & i_rural == 0 & !(cbg_home %in% fire_dt$cbg)],
+      cluster = ~county + mo ^ yr,
+      weights = ~pop,
+    )
+  # Plot
+  for (i in seq_along(test)) test[[i]] |> coefplot()
+
+
+# Estimate event study: Raw coefficients -------------------------------------------------
   # Iterate over outcome variables
   for (i in 1:8) {
     # Build formula

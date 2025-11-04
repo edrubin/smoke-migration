@@ -24,22 +24,24 @@
     font_import(paths = '~/.fonts', pattern = 'FiraSansExtra', prompt = FALSE)
   )
   loadfonts(quiet = TRUE)
-  # Add directory of SafeGraph data
-  dir_sg = '/media/edwardrubin/Data/SafeGraph'
 
 
 # Load data: West Coast data -------------------------------------------------------------
   # Load the dataset
-  full_dt = here(
-    'data-processed', 'for-analysis', 'for-analysis-westcoast.fst'
-  ) %>% read_fst(as.data.table = TRUE)
+  full_dt =
+    here(
+      'data-processed', 'for-analysis', 'for-analysis-westcoast.fst'
+    ) |>
+    read_fst(as.data.table = TRUE)
 
 
 # Load data: CBG fire exposures ----------------------------------------------------------
   # Load the dataset
-  fire_dt = here(
-    'data-processed', 'for-analysis', 'cbg-fire-exposure-westcoast.fst'
-  ) %>% read_fst(as.data.table = TRUE)
+  fire_dt =
+    here(
+      'data-processed', 'for-analysis', 'cbg-fire-exposure-westcoast.fst'
+    ) |>
+    read_fst(as.data.table = TRUE)
 
 
 # Data work: Quick cleaning --------------------------------------------------------------
