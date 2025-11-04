@@ -36,8 +36,10 @@ smoke-migration/
 │   └── ...
 ├── data-raw/
 │   ├── census/
+│   ├── nhgis/
 │   ├── noaa/
-│   └── ...
+│   ├── sg-census/
+│   └── usgs/
 ├── data-processed/
 ├── data-results/
 ├── data-figures/
