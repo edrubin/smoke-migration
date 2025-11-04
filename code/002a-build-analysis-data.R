@@ -1,8 +1,6 @@
-
-
 # Notes ----------------------------------------------------------------------------------
-#   Goal: Create (mostly) clean (West Coast) dataset ready for analysis.
-#   Time: 5-10 minutes
+#   Goal:   Create (mostly) clean (West Coast) dataset ready for analysis.
+#   Time:   5-10 minutes
 
 
 # Setup ----------------------------------------------------------------------------------
@@ -10,37 +8,39 @@
   library(pacman)
   p_load(parallel, fastverse, fst, fixest, magrittr, here)
   fastverse_extend(topics = c('SP', 'DT', 'ST'))
-  # Fix collapse's F issue
-  F = FALSE
   # Add directory of SafeGraph data
   dir_sg = '/media/edwardrubin/Data/SafeGraph'
 
 
 # Load data: County shapefiles -----------------------------------------------------------
   # Load TigerLines county shape file
-  tl_sf = here(
-    "data-raw", "census", "tl_2016_us_county", "tl_2016_us_county.shp"
-  ) %>% st_read(
-    stringsAsFactors = F,
-    # Limit to counties in contiguous 48 states (plus DC)
-    query = paste(
-      "SELECT GEOID", 
-      "FROM \"tl_2016_us_county\"",
-      "WHERE STATEFP NOT IN ('02', '15', '60', '66', '69', '72', '78')"
-    )
-  ) %>% dplyr::transmute(fips = GEOID)
+  tl_sf =
+    here(
+      'data-raw', 'census', 'tl_2016_us_county', 'tl_2016_us_county.shp'
+    ) %>%
+    st_read(
+      stringsAsFactors = FALSE,
+      # Limit to counties in contiguous 48 states (plus DC)
+      query = paste(
+        'SELECT GEOID',
+        'FROM \"tl_2016_us_county\"',
+        "WHERE STATEFP NOT IN ('02', '15', '60', '66', '69', '72', '78')"
+      )
+    ) %>%
+    dplyr::transmute(fips = GEOID)
   # Load cartographic boundary county shape file
   cb_sf = here(
-    "data-raw", "census", "cb_2016_us_county_500k", "cb_2016_us_county_500k.shp"
+    'data-raw', 'census', 'cb_2016_us_county_500k', 'cb_2016_us_county_500k.shp'
   ) %>% st_read(
-    stringsAsFactors = F,
+    stringsAsFactors = FALSE,
     # Limit to counties in contiguous 48 states (plus DC)
     query = paste(
-      "SELECT GEOID", 
-      "FROM \"cb_2016_us_county_500k\"",
+      'SELECT GEOID',
+      'FROM \"cb_2016_us_county_500k\"',
       "WHERE STATEFP NOT IN ('02', '15', '60', '66', '69', '72', '78')"
     )
-  ) %>% dplyr::transmute(fips = GEOID)
+  ) %>%
+  dplyr::transmute(fips = GEOID)
 
 
 # Data work: County areas ----------------------------------------------------------------
@@ -152,7 +152,7 @@
   ), by = cbg_home]
   # Only keep CBGs with all weeks (98.5% of CBGs and 99.8% of population)
   # For visits: we keep 22,815,726,329 out of 22,870,872,528 visits
-  max_weeks = cbg_dt[,fmax(n_weeks)]
+  max_weeks = cbg_dt[, fmax(n_weeks)]
   cbg_dt %<>% .[n_weeks == max_weeks]
   full_dt %<>% .[cbg_home %in% cbg_dt[, cbg_home]]
 
@@ -314,24 +314,28 @@
   )
   setnames(c23, c('cbg', 'pop_employable', 'pop_employed'))
   # Merge datasets
-  cbg_dt = merge(
-    x = c01,
-    y = c02,
-    by = 'cbg',
-    all = T
-  ) %>% merge(
-    y = c03,
-    by = 'cbg',
-    all = T
-  ) %>% merge(
-    y = c19,
-    by = 'cbg',
-    all = T
-  ) %>% merge(
-    y = c23,
-    by = 'cbg',
-    all = T
-  )
+  cbg_dt =
+    merge(
+      x = c01,
+      y = c02,
+      by = 'cbg',
+      all = TRUE
+    ) %>%
+    merge(
+      y = c03,
+      by = 'cbg',
+      all = TRUE
+    ) %>%
+    merge(
+      y = c19,
+      by = 'cbg',
+      all = TRUE
+    ) %>%
+    merge(
+      y = c23,
+      by = 'cbg',
+      all = TRUE
+    )
   # Add shares
   cbg_dt[, `:=`(
     shr_white = pop_white / pop,
@@ -362,7 +366,7 @@
   # Load the dataset
   nhgis_dt = here(
     'data-raw', 'nhgis', 'nhgis0036_ds172_2010_blck_grp.csv'
-  ) %>% fread(skip = 2, header = F)
+  ) %>% fread(skip = 2, header = FALSE)
   setnames(nhgis_dt, names(nhgis_desc))
   # Create CBG FIPS code
   nhgis_dt %<>% .[, .(
@@ -416,4 +420,3 @@
     path = here('data-processed', 'for-analysis', 'for-analysis-westcoast.fst'),
     compress = 100
   )
-  

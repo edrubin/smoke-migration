@@ -1,5 +1,3 @@
-
-
 # Notes ----------------------------------------------------------------------------------
 #   Goal:   Calculate CBGs' weekly visits to hospitals (summing over POIs).
 #   Time:   ~10 minutes
@@ -10,8 +8,6 @@
   library(pacman)
   p_load(parallel, fastverse, fst, magrittr, here)
   fastverse_extend(topics = c('DT', 'ST'))
-  # Fix collapse's F issue
-  F = FALSE
   # Add directory of SafeGraph data
   dir_sg = '/media/edwardrubin/Data/SafeGraph'
 
@@ -45,13 +41,13 @@
         'data-processed', 'poi-smoke-week', f
       ) %>% read_fst(
         columns = c('placekey', 'cbg_poi', 'cbg_home', 'date_start', 'visits'),
-        as.data.table = T
+        as.data.table = TRUE
       )
       # Drop observations missing their CBGs
       w_dt %<>% .[(cbg_poi != '') & (cbg_home != '')]
       # Grab hospitals only
       w_dt %<>% merge(
-        hospital_keys[,'placekey'],
+        hospital_keys[, 'placekey'],
         by = 'placekey',
         all.x = FALSE,
         all.y = FALSE
@@ -81,9 +77,10 @@
         give.names = FALSE
       )
       # Add the week's start date
-      visits_dt[, date_start := w_dt[1,date_start]]
+      visits_dt[, date_start := w_dt[1, date_start]]
       # Remove the POI dataset
-      rm(w_dt); invisible(gc())
+      rm(w_dt)
+      invisible(gc())
       # Save the file
       write_fst(
         x = visits_dt,
@@ -108,7 +105,7 @@
     as.data.table = TRUE,
     mc.cores = 32
   ) %>% rbindlist(use.names = TRUE, fill = TRUE)
-  
+
 
 # Save -----------------------------------------------------------------------------------
   # Save the dataset

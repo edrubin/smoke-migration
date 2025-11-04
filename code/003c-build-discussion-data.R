@@ -1,6 +1,6 @@
-
 # Notes ----------------------------------------------------------------------------------
-#   Goal:   
+#   Goal:   Make plots showing how various CBG characteristics vary by income
+
 
 # Setup ----------------------------------------------------------------------------------
   # Packages
@@ -18,12 +18,14 @@
   #   pattern = 'Fira'
   # )
 
+
 # Load data: Main analysis file ----------------------------------------------------------
   # Load the dataset
   full_dt = here(
     'data-processed', 'for-analysis', 'for-analysis-westcoast.fst'
     # 'data-processed', 'for-analysis', 'for-analysis-full.fst'
   ) %>% read_fst(as.data.table = TRUE)
+
 
 # Data work: Collapse to CBG -------------------------------------------------------------
   # Create an indicator for rural (more than 50% rural population)
@@ -57,14 +59,16 @@
     hh_inc_p = hh_inc_p / fmax(hh_inc_p)
   )]
 
+
 # Load data: CBG descriptions ------------------------------------------------------------
   # Load the raw data
   desc_dt = here(
     'data-raw', 'census', 'cbg-descr', 'cbg-descr.csv'
   ) %>% fread()
 
+
 # Data work: Code NHGIS file -------------------------------------------------------------
-  # Code data 
+  # Code data
   desc_dt %<>% .[, .(
     # CBG code to match other data
     cbg_home = paste0(
@@ -74,7 +78,7 @@
       str_pad(BLKGRPA, 1, 'left', 0)
     ),
     # Education: Pct high school graduates (and higher)
-    educ_pct_grad_hs = (ALWGE017 + ALWGE018 + ALWGE019 + ALWGE020 + 
+    educ_pct_grad_hs = (ALWGE017 + ALWGE018 + ALWGE019 + ALWGE020 +
       ALWGE021 + ALWGE022 + ALWGE023 + ALWGE024 + ALWGE025) / ALWGE001,
     # Education: Pct college graduates (and higher)
     educ_pct_grad_co = (ALWGE021 + ALWGE022 + ALWGE023 + ALWGE024 + ALWGE025) / ALWGE001,
@@ -87,17 +91,17 @@
     # Housing: Pct mobile home
     housing_pct_mblhome = AL0AE010 / AL0AE001,
     # Housing: Weighted age
-    housing_avg_age = 
-      AL0DE002/AL0DE001 * (2015 - 2014) +
-      AL0DE003/AL0DE001 * (2015 - 2010) +
-      AL0DE004/AL0DE001 * (2015 - 2000) +
-      AL0DE005/AL0DE001 * (2015 - 1990) +
-      AL0DE006/AL0DE001 * (2015 - 1980) +
-      AL0DE007/AL0DE001 * (2015 - 1970) +
-      AL0DE008/AL0DE001 * (2015 - 1960) +
-      AL0DE009/AL0DE001 * (2015 - 1950) +
-      AL0DE010/AL0DE001 * (2015 - 1940) +
-      AL0DE011/AL0DE001 * (2015 - 1939),
+    housing_avg_age =
+      AL0DE002 / AL0DE001 * (2015 - 2014) +
+      AL0DE003 / AL0DE001 * (2015 - 2010) +
+      AL0DE004 / AL0DE001 * (2015 - 2000) +
+      AL0DE005 / AL0DE001 * (2015 - 1990) +
+      AL0DE006 / AL0DE001 * (2015 - 1980) +
+      AL0DE007 / AL0DE001 * (2015 - 1970) +
+      AL0DE008 / AL0DE001 * (2015 - 1960) +
+      AL0DE009 / AL0DE001 * (2015 - 1950) +
+      AL0DE010 / AL0DE001 * (2015 - 1940) +
+      AL0DE011 / AL0DE001 * (2015 - 1939),
     # Housing: Pct no internet
     housing_pct_nointernet = AL2FE008 / AL2FE001,
     # Transport: Pct no vehicle
@@ -110,6 +114,7 @@
     heat_pct_electricity = AL0JE004 / AL0JE001
   )]
 
+
 # Merge data -----------------------------------------------------------------------------
   # Merge!
   cbg_dt %<>% merge(
@@ -118,6 +123,7 @@
     all.x = TRUE,
     all.y = FALSE
   )
+
 
 # Regressions ----------------------------------------------------------------------------
   # Income percentile
@@ -131,6 +137,7 @@
     ) ~ hh_inc_p,
     data = cbg_dt[i_rural == 0]
   ) %>% etable()
+
 
 # Data work: Create percentile datasets --------------------------------------------------
   # Add percentile groups
@@ -190,6 +197,7 @@
     cols = 4:25
   )
 
+
 # Define variables, labels, and colors for plots -----------------------------------------
   # Choose variables
   target_vars = c(
@@ -219,6 +227,7 @@
   )
   # Define vector of colors for plots
   cols = viridis::magma(100)[seq(1, 85, length.out = length(target_vars)) %>% round(0)]
+
 
 # Figure: Income -------------------------------------------------------------------------
   plot_v = lapply(
@@ -270,17 +279,22 @@
     # Find it
     i = which(target_vars == 'hh_inc')
     # Fix the labels (change from percent to thousands of dollars)
-    plot_v[[i]] =     
-      plot_v[[i]] + scale_y_continuous('', labels = . %>% dollar(scale = 1e-3, suffix = 'K'))
+    plot_v[[i]] =
+      plot_v[[i]] +
+      scale_y_continuous('', labels = . %>% dollar(scale = 1e-3, suffix = 'K'))
   }
   # Remove unwanted x-axis labels
   for (i in 1:5) {
-    plot_v[[i]] = plot_v[[i]] + theme(axis.text.x = element_blank(), axis.title.x = element_blank())
+    plot_v[[i]] =
+      plot_v[[i]] +
+      theme(axis.text.x = element_blank(), axis.title.x = element_blank())
   }
-  for (i in c(6:7,9:10)) {
-    plot_v[[i]] = plot_v[[i]] + theme(axis.title.x = element_blank())
+  for (i in c(6:7, 9:10)) {
+    plot_v[[i]] =
+      plot_v[[i]] +
+      theme(axis.title.x = element_blank())
   }
-  # Save the joint 
+  # Save the joint
   ggsave(
     plot = wrap_plots(plot_v, ncol = 5),
     filename = here('figures', 'dimensions', 'dimensions-by-income.pdf'),
@@ -292,6 +306,7 @@
     file = here('figures', 'dimensions', 'dimensions-by-income.pdf'),
     outfile = here('figures', 'dimensions', 'dimensions-by-income.pdf')
   )
+
 
 # Figure: Share Black --------------------------------------------------------------------
   # Iterate over variables
@@ -344,28 +359,32 @@
     # Find it
     i = which(target_vars == 'hh_inc')
     # Fix the labels (change from percent to thousands of dollars)
-    plot_v[[i]] =     
-      plot_v[[i]] + scale_y_continuous('', labels = . %>% dollar(scale = 1e-3, suffix = 'K'))
+    plot_v[[i]] =
+      plot_v[[i]] +
+      scale_y_continuous('', labels = . %>% dollar(scale = 1e-3, suffix = 'K'))
   }
   # Remove unwanted x-axis labels
   for (i in 1:5) {
-    plot_v[[i]] = plot_v[[i]] + theme(axis.text.x = element_blank(), axis.title.x = element_blank())
+    plot_v[[i]] =
+      plot_v[[i]] +
+      theme(axis.text.x = element_blank(), axis.title.x = element_blank())
   }
-  for (i in c(6:7,9:10)) {
+  for (i in c(6:7, 9:10)) {
     plot_v[[i]] = plot_v[[i]] + theme(axis.title.x = element_blank())
   }
-  # Save the joint 
+  # Save the joint
   ggsave(
     plot = wrap_plots(plot_v, ncol = 5),
     filename = here('figures', 'dimensions', 'dimensions-by-black.pdf'),
     width = 9,
     height = 5,
     device = cairo_pdf
-  )  
+  )
   embed_fonts(
     file = here('figures', 'dimensions', 'dimensions-by-black.pdf'),
     outfile = here('figures', 'dimensions', 'dimensions-by-black.pdf')
   )
+
 
 # Figure: Share Hispanic -----------------------------------------------------------------
   # Iterate over variables
@@ -418,28 +437,32 @@
     # Find it
     i = which(target_vars == 'hh_inc')
     # Fix the labels (change from percent to thousands of dollars)
-    plot_v[[i]] =     
-      plot_v[[i]] + scale_y_continuous('', labels = . %>% dollar(scale = 1e-3, suffix = 'K'))
+    plot_v[[i]] =
+      plot_v[[i]] +
+      scale_y_continuous('', labels = . %>% dollar(scale = 1e-3, suffix = 'K'))
   }
   # Remove unwanted x-axis labels
   for (i in 1:5) {
-    plot_v[[i]] = plot_v[[i]] + theme(axis.text.x = element_blank(), axis.title.x = element_blank())
+    plot_v[[i]] =
+      plot_v[[i]] +
+      theme(axis.text.x = element_blank(), axis.title.x = element_blank())
   }
-  for (i in c(6:7,9:10)) {
+  for (i in c(6:7, 9:10)) {
     plot_v[[i]] = plot_v[[i]] + theme(axis.title.x = element_blank())
   }
-  # Save the joint 
+  # Save the joint
   ggsave(
     plot = wrap_plots(plot_v, ncol = 5),
     filename = here('figures', 'dimensions', 'dimensions-by-hispanic.pdf'),
     width = 9,
     height = 5,
     device = cairo_pdf
-  )  
+  )
   embed_fonts(
     file = here('figures', 'dimensions', 'dimensions-by-hispanic.pdf'),
     outfile = here('figures', 'dimensions', 'dimensions-by-hispanic.pdf')
   )
+
 
 # Figure: Share White --------------------------------------------------------------------
   # Iterate over variables
@@ -492,17 +515,20 @@
     # Find it
     i = which(target_vars == 'hh_inc')
     # Fix the labels (change from percent to thousands of dollars)
-    plot_v[[i]] =     
-      plot_v[[i]] + scale_y_continuous('', labels = . %>% dollar(scale = 1e-3, suffix = 'K'))
+    plot_v[[i]] =
+      plot_v[[i]] +
+      scale_y_continuous('', labels = . %>% dollar(scale = 1e-3, suffix = 'K'))
   }
   # Remove unwanted x-axis labels
   for (i in 1:5) {
-    plot_v[[i]] = plot_v[[i]] + theme(axis.text.x = element_blank(), axis.title.x = element_blank())
+    plot_v[[i]] =
+      plot_v[[i]] +
+      theme(axis.text.x = element_blank(), axis.title.x = element_blank())
   }
-  for (i in c(6:7,9:10)) {
+  for (i in c(6:7, 9:10)) {
     plot_v[[i]] = plot_v[[i]] + theme(axis.title.x = element_blank())
   }
-  # Save the joint 
+  # Save the joint
   ggsave(
     plot = wrap_plots(plot_v, ncol = 5),
     filename = here('figures', 'dimensions', 'dimensions-by-white.pdf'),
@@ -514,4 +540,3 @@
     file = here('figures', 'dimensions', 'dimensions-by-white.pdf'),
     outfile = here('figures', 'dimensions', 'dimensions-by-white.pdf')
   )
-  

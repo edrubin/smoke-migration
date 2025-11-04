@@ -1,16 +1,16 @@
+# Notes ----------------------------------------------------------------------------------
+#   Goal:   Load SafeGraph weekly patterns data and merge with weekly smoke data
 
 
 # Setup ----------------------------------------------------------------------------------
   # Packages
   library(pacman)
   p_load(
-    tidyverse, 
-    qs, fst, collapse, data.table, 
+    tidyverse,
+    qs, fst, collapse, data.table,
     splitstackshape, MetricsWeighted, lubridate, parallel,
     magrittr, here
   )
-  # Fix collapse's F issue
-  F = FALSE
   # Add directory of SafeGraph data
   dir_sg = '/media/edwardrubin/Data/SafeGraph'
 
@@ -18,59 +18,63 @@
 # Data work: Load and merge SG visits with smoke data ------------------------------------
   # Find the weeks
   file_dt = data.table(
-    file_name = file.path(dir_sg, "data-transformed", "weekly") %>% dir()
+    file_name = file.path(dir_sg, 'data-transformed', 'weekly') %>% dir()
   )
   # Add the week
   file_dt[, wk := str_sub(file_name, 17, 26) %>% ymd()]
   # Find the completed weeks
-  weeks_done = here(
-    'data-processed', 'poi-smoke-week'
-  ) %>% dir() %>% str_remove_all('\\.fst') %>% ymd()
+  weeks_done =
+    here(
+      'data-processed', 'poi-smoke-week'
+    ) %>%
+    dir() %>%
+    str_remove_all('\\.fst') %>%
+    ymd()
   # Drop completed weeks
   file_dt %<>% .[! (wk %in% weeks_done)]
   # Iterate over weeks...
   blah = lapply(
   # blah = mclapply(
-    X = file_dt[,wk], 
+    X = file_dt[, wk],
     # mc.cores = 4,
     FUN = function(w) {
       # Load the data from week 'w'
       w_dt = file.path(
         dir_sg,
-        "data-transformed", "weekly", 
-        paste0("weekly-patterns-", as.character(w), ".fst")
+        'data-transformed', 'weekly',
+        paste0('weekly-patterns-', as.character(w), '.fst')
       ) %>% read_fst(
         columns = c(
-          "date_range_start", "placekey",
-          # "raw_visit_counts", "raw_visitor_counts", 
-          "poi_cbg", "visitor_home_cbgs"
+          'date_range_start', 'placekey',
+          # 'raw_visit_counts', 'raw_visitor_counts',
+          'poi_cbg', 'visitor_home_cbgs'
         ),
-        as.data.table = T
+        as.data.table = TRUE
       )
       # Drop POIs where 'visitor_home_cbgs' is '{}'
       w_dt %<>% .[visitor_home_cbgs != '{}']
       # Remove curly brackets and escaped quotation marks
       w_dt[, `:=`(
-        visitor_home_cbgs = visitor_home_cbgs %>% str_remove_all("\\{|\"|\\}")
+        visitor_home_cbgs = visitor_home_cbgs %>% str_remove_all('\\{|\'|\\}')
       )]
       # Split visitor CBGs into rows
       w_dt = cSplit(
         indt = w_dt,
-        sep = ",",
-        splitCols = "visitor_home_cbgs",
-        direction = "long",
-        drop = T,
-        type.convert = F
+        sep = ',',
+        splitCols = 'visitor_home_cbgs',
+        direction = 'long',
+        drop = TRUE,
+        type.convert = FALSE
       )
       # Drop Canadian CBGs: they begin with letters instead (CA) of numbers
       w_dt %<>% .[
         (!str_detect(visitor_home_cbgs, '^[^0-9]')) & (!str_detect(poi_cbg, '^[^0-9]'))
       ]
       # Split the new column
-      w_dt[, c("cbg_home", "visits") := tstrsplit(
+      w_dt[, c('cbg_home', 'visits') := tstrsplit(
         x = visitor_home_cbgs,
-        split = ":",
-        type.convert = F
+        split = ':',
+        type.convert = FALSE
       )]
       # Drop 'visitor_home_cbgs' column
       w_dt[, visitor_home_cbgs := NULL]
@@ -79,16 +83,16 @@
       # The week's days
       w_days = seq.Date(from = w, length.out = 7, by = '1 day')
       # The week's smoke files
-      w_files = w_days %>% 
-        str_remove_all('-') %>% 
+      w_files = w_days %>%
+        str_remove_all('-') %>%
         paste0('.fst') %>%
         here('data-processed', 'cbg-smoke-day', .)
       # Only grab the files that exist
       w_files = w_files[file.exists(w_files)]
       # Load and stack the files
       w_smoke = lapply(
-        X = w_files, FUN = read_fst, as.data.table = T
-      ) %>% rbindlist(use.names = T, fill = T)
+        X = w_files, FUN = read_fst, as.data.table = TRUE
+      ) %>% rbindlist(use.names = TRUE, fill = TRUE)
       # Collapse to CBG-week level, summing the daily smoke indicators
       w_smoke %<>% collap(FUN = fsum, ~ geoid)
       # Key datasets for home CBG merge
@@ -151,4 +155,3 @@
       return('nothing')
     }
   )
-

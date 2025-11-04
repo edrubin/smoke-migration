@@ -1,8 +1,6 @@
-
-
 # Notes ----------------------------------------------------------------------------------
 #   Goal:   Merge SafeGraph POI weekly visits with grid of smoke-based PM exposure.
-#           Note: Source of data is Burke et al. (2022, Env. Sci. & Technology)
+#           NOTE: Source of data is Burke et al. (2022, Env. Sci. & Technology)
 #   Time:   Under two hours?
 
 
@@ -23,10 +21,13 @@
 
 # Load data: Burke et al. grid -----------------------------------------------------------
   # Load the grid (defined by Burke et al.)
-  grid_sf = here(
-    'data-processed', 'pm-smoke-burke', '10km_grid',
-    '10km_grid_wgs84/10km_grid_wgs84.shp'
-  ) %>% st_read() %>% select(ID)
+  grid_sf =
+    here(
+      'data-processed', 'pm-smoke-burke', '10km_grid',
+      '10km_grid_wgs84/10km_grid_wgs84.shp'
+    ) |>
+    st_read() |>
+    select(ID)
 
 
 # Load data: POI locations ---------------------------------------------------------------
@@ -132,90 +133,97 @@
 # Data work: Match visits to PM exposure -------------------------------------------------
 # NOTE: This step took ~100 minutes without parallelization
   # Find files (weekly files of POI visits)
-  week_v = here(
-    'data-processed', 'poi-smoke-week'
-  ) %>% dir() %>% str_remove_all('\\.fst') %>% ymd()
+  week_v =
+    here(
+      'data-processed', 'poi-smoke-week'
+    ) |>
+    dir() |>
+    str_remove_all('\\.fst') |>
+    ymd()
   # Iterate over already-processed files
-  smoke_pm = mclapply(X = week_v, mc.cores = 10, FUN = function(w) {
-    # Find days in week 'w'
-    w_days = seq.Date(from = w, by = '1 day', length = 7)
-    # Convert week 'w' to character
-    wc = w %>% as.character() %>% str_remove_all('-')
-    # Load POI visits for week 'w'
-    w_dt = here(
-      'data-processed', 'poi-smoke-week',
-      paste0(str_remove_all(w, '-'), '.fst')
-    ) %>% read_fst(
-      as.data.table = TRUE,
-      columns = c('cbg_poi', 'cbg_home', 'placekey', 'visits')
-    )
-    # Restrict to visits where visitors' home CBGs are on the West Coast
-    w_dt %<>% .[str_sub(cbg_home, 1, 2) %in% c('06', '41', '53')]
-    # Iterate over days in 'w', calculating smoke-based PM exposure for visits
-    w_pm = lapply(X = w_days, FUN = function(d) {
-      # Copy w_dt
-      wd_dt = copy(w_dt)
-      # Add date
-      wd_dt[, date := d]
-      # Key to merge with cross walk
-      setkey(wd_dt, placekey)
-      setkey(poi_grid, placekey)
-      # Merge with cross walk
-      wd_dt %<>% merge(poi_grid, by = 'placekey')
-      # Key to merge with PM dataset
-      setkey(wd_dt, grid_id)
-      setkey(pm_dt, date, grid_id)
-      # Merge with PM dataset
-      wd_dt %<>% merge(
-        pm_dt[date == d],
-        by = c('grid_id', 'date'),
-        all.x = TRUE,
-        all.y = FALSE
+  smoke_pm =
+    mclapply(X = week_v, mc.cores = 10, FUN = function(w) {
+      # Find days in week 'w'
+      w_days = seq.Date(from = w, by = '1 day', length = 7)
+      # Convert week 'w' to character
+      wc = w %>% as.character() %>% str_remove_all('-')
+      # Load POI visits for week 'w'
+      w_dt = here(
+        'data-processed', 'poi-smoke-week',
+        paste0(str_remove_all(w, '-'), '.fst')
+      ) %>% read_fst(
+        as.data.table = TRUE,
+        columns = c('cbg_poi', 'cbg_home', 'placekey', 'visits')
       )
-      # Replace missing values with 0 (no smoke-based PM)
-      wd_dt[is.na(pm), pm := 0]
-      # Return the daily dataset
-      return(wd_dt)
-    }) %>% rbindlist(use.names = TRUE, fill = TRUE)
-    # Repeat iterations for CBG centroids (counterfactual of no travel)
-    w_pm_cbg = lapply(X = w_days, FUN = function(d) {
-      # Copy the CBG-grid crosswalk
-      cbg_d = copy(cbg_grid)
-      # Drop CBGs that did not match to grid cells (spurious PM = 0)
-      cbg_d %<>% .[!is.na(grid_id)]
-      # Add date
-      cbg_d[, date := d]
-      # Key to merge with PM dataset
-      setkey(cbg_d, grid_id)
-      setkey(pm_dt, date, grid_id)
-      # Merge with PM dataset
-      cbg_d %<>% merge(
-        pm_dt[date == d],
-        by = c('grid_id', 'date'),
+      # Restrict to visits where visitors' home CBGs are on the West Coast
+      w_dt %<>% .[str_sub(cbg_home, 1, 2) %in% c('06', '41', '53')]
+      # Iterate over days in 'w', calculating smoke-based PM exposure for visits
+      w_pm = lapply(X = w_days, FUN = function(d) {
+        # Copy w_dt
+        wd_dt = copy(w_dt)
+        # Add date
+        wd_dt[, date := d]
+        # Key to merge with cross walk
+        setkey(wd_dt, placekey)
+        setkey(poi_grid, placekey)
+        # Merge with cross walk
+        wd_dt %<>% merge(poi_grid, by = 'placekey')
+        # Key to merge with PM dataset
+        setkey(wd_dt, grid_id)
+        setkey(pm_dt, date, grid_id)
+        # Merge with PM dataset
+        wd_dt %<>% merge(
+          pm_dt[date == d],
+          by = c('grid_id', 'date'),
+          all.x = TRUE,
+          all.y = FALSE
+        )
+        # Replace missing values with 0 (no smoke-based PM)
+        wd_dt[is.na(pm), pm := 0]
+        # Return the daily dataset
+        return(wd_dt)
+      }) |>
+      rbindlist(use.names = TRUE, fill = TRUE)
+      # Repeat iterations for CBG centroids (counterfactual of no travel)
+      w_pm_cbg = lapply(X = w_days, FUN = function(d) {
+        # Copy the CBG-grid crosswalk
+        cbg_d = copy(cbg_grid)
+        # Drop CBGs that did not match to grid cells (spurious PM = 0)
+        cbg_d %<>% .[!is.na(grid_id)]
+        # Add date
+        cbg_d[, date := d]
+        # Key to merge with PM dataset
+        setkey(cbg_d, grid_id)
+        setkey(pm_dt, date, grid_id)
+        # Merge with PM dataset
+        cbg_d %<>% merge(
+          pm_dt[date == d],
+          by = c('grid_id', 'date'),
+          all.x = TRUE,
+          all.y = FALSE
+        )
+        # Replace missing values with 0 (no smoke-based PM)
+        cbg_d[is.na(pm), pm := 0]
+        # Return the daily dataset
+        return(cbg_d)
+      }) %>%
+      rbindlist(use.names = TRUE, fill = TRUE)
+      # Drop 'w_dt'
+      rm(w_dt)
+      # Summarize PM exposure tables (by home for POI visits) and merge!
+      w_dt = merge(
+        x = w_pm_cbg[, .(smoke_pm_home = fmean(x = pm)), by = .(cbg_home = cbg)],
+        y = w_pm[, .(
+          smoke_pm_visits = fmean(x = pm, w = visits),
+          date_start = w
+        ), by = cbg_home],
+        by = 'cbg_home',
         all.x = TRUE,
-        all.y = FALSE
+        all.y = TRUE
       )
-      # Replace missing values with 0 (no smoke-based PM)
-      cbg_d[is.na(pm), pm := 0]
-      # Return the daily dataset
-      return(cbg_d)
-    }) %>% rbindlist(use.names = TRUE, fill = TRUE)
-    # Drop 'w_dt'
-    rm(w_dt)
-    # Summarize PM exposure tables (by home for POI visits) and merge!
-    w_dt = merge(
-      x = w_pm_cbg[, .(smoke_pm_home = fmean(x = pm)), by = .(cbg_home = cbg)],
-      y = w_pm[, .(
-        smoke_pm_visits = fmean(x = pm, w = visits),
-        date_start = w
-      ), by = cbg_home],
-      by = 'cbg_home',
-      all.x = TRUE,
-      all.y = TRUE
-    )
-    # Return the week's summary
-    return(w_dt)
-  })
+      # Return the week's summary
+      return(w_dt)
+    })
   # Convert list of daily CBG PM exposure measures to data table
   # Note: This step is to fix missing dates (when a CBG had no visits)
   exp_dt = lapply(
@@ -224,7 +232,7 @@
       # Grab the ith element of smoke_pm
       i_dt = smoke_pm[[i]]
       # Grab the date
-      i_d = i_dt[1,date_start]
+      i_d = i_dt[1, date_start]
       # Fill in missing dates (there's only one date in i_dt)
       i_dt[is.na(date_start), date_start := i_d]
       # Return the updated data table
@@ -232,9 +240,9 @@
     }
   ) %>% rbindlist(use.names = TRUE, fill = TRUE)
   # Find the two CBGs that did not match a grid cell
-  tmp = exp_dt[,.N,cbg_home]
+  tmp = exp_dt[, .N, cbg_home]
   # Drop the two CBGs
-  exp_dt %<>% .[!(cbg_home %in% tmp[N<209,cbg_home])]
+  exp_dt %<>% .[!(cbg_home %in% tmp[N < 209, cbg_home])]
 
 
 # Save -----------------------------------------------------------------------------------

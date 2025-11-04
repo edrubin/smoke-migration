@@ -1,5 +1,3 @@
-
-
 # Notes ----------------------------------------------------------------------------------
 #   Goal:   Match CBGs to historic fire perimeters
 #   Time:   1 minute
@@ -16,8 +14,6 @@
   p_load(parallel, fastverse, geojsonsf, magrittr, here)
   fastverse_extend(topics = c('DT', 'ST', 'SP', 'IO'))
   sf_use_s2(FALSE)
-  # Fix collapse's F issue
-  F = FALSE
   # Add directory of SafeGraph data
   dir_sg = '/media/edwardrubin/Data/SafeGraph'
 
@@ -42,14 +38,14 @@
   fire1 = here(
     'data-raw', 'usgs', 'WFDSSHistoricFirePerimeters_2010_2019',
     'WFDSSHistoricFirePerimeters_2010_2019.shp'
-  ) %>% st_read()  
+  ) %>% st_read()
   fire1 %<>% janitor::clean_names()
   # Grab desired variables
   fire1 %<>% dplyr::select(id = objectid, fire_year, acres = gis_acres)
 
 
 # Load data: Fire perimeters, 2020 -------------------------------------------------------
-  # Load 
+  # Load
   fire2 = here(
     'data-raw', 'usgs', 'WFDSSHistoricFirePerimeters_2020',
     'WFDSSHistoricFirePerimeters_2020.shp'
@@ -61,7 +57,7 @@
 
 # Load data: Fire perimeters, full history -----------------------------------------------
 # NOTE: The 'full history' only fills in 2020 and 2021 (and 2022)
-  # Load 
+  # Load
   fire3 = here(
     'data-raw', 'usgs', 'WFIGSWildlandFirePerimeters_Full_History',
     'FH_Perimeter.shp'
@@ -76,7 +72,7 @@
 
 
 # Data work: Combine fire datasets -------------------------------------------------------
-  # Combine 
+  # Combine
   fire_sf = rbindlist(list(
     as.data.table(fire1),
     as.data.table(fire2),
@@ -95,7 +91,7 @@
   # Limit to fires south of 50th latitude (a bit above the Canadian border; drops AK)
   fire_center %<>% .[y < 50]
   # Apply these restrictions the actual fire perimeters
-  fire_sf %<>% dplyr::filter(id %in% fire_center[,id])
+  fire_sf %<>% dplyr::filter(id %in% fire_center[, id])
 
 
 # Data work: Find intersections ----------------------------------------------------------
@@ -134,4 +130,3 @@
     path = here('data-processed', 'for-analysis', 'cbg-fire-exposure-westcoast.fst'),
     compress = 100
   )
-

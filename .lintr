@@ -3,7 +3,8 @@ linters: linters_with_defaults(
     commented_code_linter = NULL,
     indentation_linter = NULL,
     assignment_linter = NULL,
-    quotes_linter(delimiter = c("'"))
+    quotes_linter(delimiter = c("'")),
+    object_usage_linter = NULL
   )
 exclusions: list(
   )

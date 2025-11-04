@@ -146,22 +146,24 @@
 # Iterate over outcome variables
   for (i in 1:8) {
     # Build formula
-    event_f = paste0(
-      c(
-        '1 - pct_same_county ~ ',
-        '1 - pct_same_state ~ ',
-        'dist_median ~ ',
-        'dist_p75 ~ ',
-        'total_visits ~ ',
-        'total_visits - visits_same_county ~ ',
-        'total_visits - visits_same_state ~ ',
-        'any_smoke ~ '
-      )[i],
-      paste(
-        str_subset(names(event_trt), '^p[0-9]{2}$') |> str_subset(p_drop, negate = TRUE),
-        collapse = ' + '
-      )
-    ) %>% as.formula()
+    event_f =
+      paste0(
+        c(
+          '1 - pct_same_county ~ ',
+          '1 - pct_same_state ~ ',
+          'dist_median ~ ',
+          'dist_p75 ~ ',
+          'total_visits ~ ',
+          'total_visits - visits_same_county ~ ',
+          'total_visits - visits_same_state ~ ',
+          'any_smoke ~ '
+        )[i],
+        paste(
+          str_subset(names(event_trt), '^p[0-9]{2}$') |> str_subset(p_drop, negate = TRUE),
+          collapse = ' + '
+        )
+      ) |>
+      as.formula()
     # Estimate!
     event_est = feols(
       event_f,

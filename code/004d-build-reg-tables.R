@@ -1,3 +1,5 @@
+# Notes ----------------------------------------------------------------------------------
+#   Goal:   Build regression tables for main results
 
 
 # Setup ----------------------------------------------------------------------------------
@@ -8,8 +10,7 @@
     magrittr, here
   )
   fastverse_extend(topics = c('DT', 'ST', 'VI'))
-  # Fix collapse's F issue
-  F = FALSE
+
 
 # Setup: Regression tables ---------------------------------------------------------------
   # Dictionary
@@ -39,8 +40,8 @@
   ))
   # New 'fitstat': Number of observations in millions
   fitstat_register(
-    type = 'n_m', 
-    fun = function(est) round(est$nobs/1e6, 2) %>% as.character(),
+    type = 'n_m',
+    fun = function(est) round(est$nobs / 1e6, 2) %>% as.character(),
     alias = 'N obs. (millions)'
   )
   # New 'fitstat': Mean of dependent variable
@@ -51,6 +52,7 @@
     },
     alias = 'Mean of dependent variable'
   )
+
 
 # Load data: Regression results ----------------------------------------------------------
   # Lags: Percent out of county
@@ -74,33 +76,31 @@
     nthreads = 16
   )
 
-# Make tables ----------------------------------------------------------------------------
 
-  # Main results 
+# Make tables ----------------------------------------------------------------------------
+  # Main results
   etable(
     # est_lag_pct[1], est_het_pct[1:4],
     # est_lag_pct[6], est_het_pct[5:8],
     est_lag_dist[1], est_het_dist[1:4],
     # est_lag_dist[6], est_het_dist[5:8],
     tex = TRUE,
-    # style.tex = style.tex("aer"),
+    # style.tex = style.tex('aer'),
     # fitstat = ~ n_m + y_mean,
     digits = 2
   )
-
   # Lags
   etable(
     est_lag_pct[1:5],
     tex = TRUE,
-    style.tex = style.tex("aer"),
+    style.tex = style.tex('aer'),
     # fitstat = ~ n_m + y_mean,
     digits = 2
   )
   etable(
     est_lag_pct[1:5],
     tex = TRUE,
-    style.tex = style.tex("aer"),
+    style.tex = style.tex('aer'),
     fitstat = ~ n_m + y_mean,
     digits = 2
   )
-

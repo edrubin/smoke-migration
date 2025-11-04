@@ -2,10 +2,12 @@
 #   Goal: Summary statistics and tables for paper
 #   Note: Some formatting done by hand after producing the tables.
 
+
 # Setup ----------------------------------------------------------------------------------
   # Load packages
   pacman::p_load(fastverse, fixest, vtable, here)
   fastverse_extend(topics = c('VI', 'ST'))
+
 
 # Load data: Analysis dataset (west coast) -----------------------------------------------
   # Read the data
@@ -14,10 +16,11 @@
     'for-analysis-westcoast.fst'
   ) %>% read_fst(as.data.table = TRUE)
 
+
 # Data work: Collapse to CBG -------------------------------------------------------------
   # Summarize CBGs (across weeks)
   setkey(full_dt, cbg_home)
-  cbg_dt = full_dt %>% .[,.(
+  cbg_dt = full_dt %>% .[, .(
     total_visits = fsum(total_visits),
     total_visits_same_cbg = fsum(visits_same_cbg),
     total_visits_same_county = fsum(visits_same_county),
@@ -36,7 +39,8 @@
     hh_inc = fmedian(hh_inc),
     dist_p75 = fmedian(dist_p75)
   ), by = cbg_home]
-  
+
+
 # Summary: Rural/urban -------------------------------------------------------------------
   # Urban share of CBGs
   cbg_dt[, fmean(pop_urban > pop_rural)]
@@ -46,6 +50,7 @@
   # Urban share of the visits
   cbg_dt[, fsum((shr_urban > shr_rural) * total_visits) / fsum(total_visits)]
   cbg_dt[(shr_urban > shr_rural), fsum(total_visits)]
+
 
 # Summary table: CBG level ---------------------------------------------------------------
   st(
@@ -124,6 +129,7 @@
     digits = 1,
     fixed.digits = FALSE
   )
+
 
 # Summary table: CBG-by-week -------------------------------------------------------------
   st(

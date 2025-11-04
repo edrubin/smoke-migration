@@ -1,6 +1,6 @@
-# ----------------------------------------------------------------------------------------
-#   Goal:
-#   Time: 1 minute
+# Notes ----------------------------------------------------------------------------------
+#   Goal:   Combine (stack) individual weekly CBG-level datasets into one dataset
+#   Time:   1 minute
 
 
 # Setup ----------------------------------------------------------------------------------
@@ -8,23 +8,23 @@
   library(pacman)
   p_load(parallel, fastverse, fst, magrittr, here)
   fastverse_extend(topics = c('DT', 'ST'))
-  # Fix collapse's F issue
-  F = FALSE
   # Add directory of SafeGraph data
   dir_sg = '/media/edwardrubin/Data/SafeGraph'
 
 
 # Load data: Weekly CBG datasets ---------------------------------------------------------
   # Find the files
-  files = here('data-processed', 'cbg-smoke-week') %>% dir(full.names = T)
+  files = here('data-processed', 'cbg-smoke-week') |> dir(full.names = TRUE)
   # Load them
-  full_dt = mclapply(
-    X = files,
-    FUN = read_fst,
-    as.data.table = TRUE,
-    mc.cores = 32
-  ) %>% rbindlist(use.names = TRUE, fill = TRUE)
-  
+  full_dt =
+    mclapply(
+      X = files,
+      FUN = read_fst,
+      as.data.table = TRUE,
+      mc.cores = 32
+    ) |>
+    rbindlist(use.names = TRUE, fill = TRUE)
+
 
 # Save -----------------------------------------------------------------------------------
   # Save the dataset

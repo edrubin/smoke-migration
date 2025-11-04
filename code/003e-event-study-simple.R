@@ -17,7 +17,7 @@
   # Build event-study dataset
   # Set event-study length
   N = 5
-  np = ceiling((N-1)/2)
+  np = ceiling((N - 1) / 2)
   # For each CBG-year, find the first week of smoke
   first_smoke = collap(
     full_dt[any_smoke > 0, .(cbg_home, yr, date_start)],
@@ -27,7 +27,7 @@
   # First CBGs with no smoke for a given year
 # NOTE: 'no_smoke' will be empty when using 'any_smoke' to define smoke
   no_smoke = collap(
-    full_dt[,.(cbg_home, yr, any_smoke)],
+    full_dt[, .(cbg_home, yr, any_smoke)],
     by = ~ cbg_home + yr,
     FUN = fmax,
   )[any_smoke == 0]
@@ -39,11 +39,11 @@
   # Change 'date_state' name
   setnames(first_smoke, old = 'date_start', new = 'date_smoke_start')
   # Expand dataset to create event study: N weeks with (N-1)/2 pre, (N-1)/2 post
-  first_smoke %<>% .[rep(1:.N, each = N)]
+  first_smoke %<>% .[rep(seq_len(.N), each = N)]
   # Add event time (with a factor label too)
   first_smoke[, `:=`(
     event_time = -np:np,
-    event_period = 1:.N
+    event_period = seq_len(.N)
   ), by = .(cbg_home, yr, date_smoke_start)]
   first_smoke[, `:=`(
     event_period = factor(
@@ -66,11 +66,11 @@
     all.y = FALSE
   )
   # Add dummies for each event period
-  for (p in event_trt[,funique(event_period)]) {
+  for (p in event_trt[, funique(event_period)]) {
     set(
       x = event_trt,
       j = p,
-      value = 1 * (event_trt[,event_period] == p)
+      value = 1 * (event_trt[, event_period] == p)
     )
   }
   # Add indicator for above median income
@@ -81,7 +81,7 @@
     wk_smoke_start = week(date_smoke_start)
   )]
   # Check the smoke and migration variables
-  event_trt[,.(
+  event_trt[, .(
     any_smoke = fmean(any_smoke),
     any_smoke_low = fmean(any_smoke_low),
     any_smoke_medium = fmean(any_smoke_medium),
@@ -115,7 +115,8 @@
       # ' cbg_home + state ^ wk_smoke_start ^ yr'
       # ' cbg_home + state ^ wk_smoke_start ^ yr'
       ' cbg_home + wk_smoke_start ^ yr + state ^ yr + state ^ mo'
-    ) %>% as.formula()
+    ) %>%
+    as.formula()
     # Estimate!
     event_est = feols(
       event_f,
@@ -132,12 +133,12 @@
     event_study = ggplot(
       data = event_est %>%
         broom::tidy(conf.int = TRUE) %>%
-        dplyr::filter(term != 'any_smoke') %>% 
-        tibble::add_row(estimate = 0, conf.low = 0, conf.high = 0) %>% 
+        dplyr::filter(term != 'any_smoke') %>%
+        tibble::add_row(estimate = 0, conf.low = 0, conf.high = 0) %>%
         dplyr::mutate(time = c(setdiff(-np:np, -1), -1)),
       aes(x = time, y = estimate, ymin = conf.low, ymax = conf.high)
     ) +
-    geom_hline(yintercept = 0, size = 1/4) +
+    geom_hline(yintercept = 0, size = .25) +
     scale_x_continuous('Weeks relative to first smoke exposure') +
     scale_y_continuous(
       name = c(
@@ -177,7 +178,7 @@
     )
     save_plot(
       filename = here(
-        'figures','event-study',
+        'figures', 'event-study',
         c(
           'event-study.pdf',
           'event-study-dist.pdf',

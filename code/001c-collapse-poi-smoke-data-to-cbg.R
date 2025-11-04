@@ -1,5 +1,3 @@
-
-
 # Notes ----------------------------------------------------------------------------------
 #   Goal: Collapse weekly POI-smoke data to weekly home-CBG visit summaries.
 #   Time: 22 minutes
@@ -10,8 +8,6 @@
   library(pacman)
   p_load(parallel, fastverse, fst, magrittr, here)
   fastverse_extend(topics = c('DT', 'ST'))
-  # Fix collapse's F issue
-  F = FALSE
   # Add directory of SafeGraph data
   dir_sg = '/media/edwardrubin/Data/SafeGraph'
 
@@ -39,7 +35,7 @@
     mc.cores = 8,
     FUN = function(f) {
       # Load data
-      w_dt = here('data-processed', 'poi-smoke-week', f) %>% read_fst(as.data.table = T)
+      w_dt = here('data-processed', 'poi-smoke-week', f) %>% read_fst(as.data.table = TRUE)
       # Drop observations missing their CBGs
       w_dt %<>% .[(cbg_poi != '') & (cbg_home != '')]
       # Add lat/lon of home and POI CBGs
@@ -70,8 +66,8 @@
       # Calculate distances (starts in meters; converted to km)
       w_dt[, `:=`(
         dist = geodist::geodist(
-          x = w_dt[,.(lon_poi, lat_poi)],
-          y = w_dt[,.(lon_home, lat_home)],
+          x = w_dt[, .(lon_poi, lat_poi)],
+          y = w_dt[, .(lon_home, lat_home)],
           paired = TRUE,
           measure = 'haversine'
         ) / 1e3
@@ -87,7 +83,7 @@
       visits_dt = collap(
         X = w_dt,
         ~ cbg_home,
-        w = ~ visits,        
+        w = ~ visits,
         custom = list(
           fsum_uw = c(
             total_visits = 'visits',
@@ -117,9 +113,10 @@
       # Merge distance summary on to visits_dt
       visits_dt %<>% merge(y = visits_dist, by = 'cbg_home', all = TRUE)
       # Add the week's start date
-      visits_dt[, date_start := w_dt[1,date_start]]
+      visits_dt[, date_start := w_dt[1, date_start]]
       # Remove the POI dataset
-      rm(w_dt, visits_dist); invisible(gc())
+      rm(w_dt, visits_dist)
+      invisible(gc())
       # Save the file
       write_fst(
         x = visits_dt,

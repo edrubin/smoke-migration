@@ -1,9 +1,6 @@
-
 # Notes ----------------------------------------------------------------------------------
 #   Goal:   Estimate heterogeneity in smoke-based migration for socioeconomic quantiles.
 #   Time:   ~20 minutes
-
-# TODO -----------------------------------------------------------------------------------
 
 
 # Data notes -----------------------------------------------------------------------------
@@ -27,17 +24,18 @@
   #   pattern = 'Fira|Input'
   # )
   loadfonts(quiet = TRUE)
-  # Fix collapse's F issue
-  F = FALSE
   # Add directory of SafeGraph data
   dir_sg = '/media/edwardrubin/Data/SafeGraph'
 
 
 # Load data: CSA crosswalk ---------------------------------------------------------------
   # Load the crosswalk
-  csa_xwalk = here(
-    'data-raw', 'census', 'qcew-county-msa-csa-crosswalk.csv'
-  ) %>% fread() %>% janitor::clean_names()
+  csa_xwalk =
+    here(
+      'data-raw', 'census', 'qcew-county-msa-csa-crosswalk.csv'
+    ) %>%
+    fread() %>%
+    janitor::clean_names()
   # Pad county codes
   csa_xwalk[, county_code := county_code %>% str_pad(5, 'left', 0)]
   # Restrict to west-coast states
@@ -68,15 +66,21 @@
   ), by = cbg_home]
   # Drop CBGs missing Census data
   cbg_dt %<>% na.omit()
-  full_dt %<>% .[cbg_home %in% cbg_dt[,cbg_home]]
+  full_dt %<>% .[cbg_home %in% cbg_dt[, cbg_home]]
   # Indicators for major CSAs
   full_dt[, `:=`(
-    i_csa_sf = 1 * (county %in% csa_xwalk[str_detect(csa_title, 'San Francisco'), county_code]),
-    i_csa_la = 1 * (county %in% csa_xwalk[str_detect(csa_title, 'Los Angeles'), county_code]),
-    i_msa_sandiego = 1 * (county %in% csa_xwalk[str_detect(msa_title, 'San Diego'), county_code]),
-    i_csa_sacramento = 1 * (county %in% csa_xwalk[str_detect(csa_title, 'Sacramento'), county_code]),
-    i_csa_seattle = 1 * (county %in% csa_xwalk[str_detect(csa_title, 'Seattle'), county_code]),
-    i_csa_portland = 1 * (county %in% csa_xwalk[str_detect(csa_title, 'Portland'), county_code])
+    i_csa_sf =
+      1 * (county %in% csa_xwalk[str_detect(csa_title, 'San Francisco'), county_code]),
+    i_csa_la =
+      1 * (county %in% csa_xwalk[str_detect(csa_title, 'Los Angeles'), county_code]),
+    i_msa_sandiego =
+      1 * (county %in% csa_xwalk[str_detect(msa_title, 'San Diego'), county_code]),
+    i_csa_sacramento =
+      1 * (county %in% csa_xwalk[str_detect(csa_title, 'Sacramento'), county_code]),
+    i_csa_seattle =
+      1 * (county %in% csa_xwalk[str_detect(csa_title, 'Seattle'), county_code]),
+    i_csa_portland =
+      1 * (county %in% csa_xwalk[str_detect(csa_title, 'Portland'), county_code])
   )]
 
 
@@ -90,11 +94,11 @@
     file_type = 'pdf'
   ) {
     # CBG-level dataset for desired variable
-    cbg_dt = full_dt[, c('cbg_home', het_var), with = F] %>% funique()
+    cbg_dt = full_dt[, c('cbg_home', het_var), with = FALSE] %>% funique()
     # Calculate quantiles
     cols = names(cbg_dt)[-1]
-    cbg_dt[, (cols) := 
-      lapply(X = .SD, quantcut, q = nq, na.rm = TRUE, ordered_result = T),
+    cbg_dt[, (cols) :=
+      lapply(X = .SD, quantcut, q = nq, na.rm = TRUE, ordered_result = TRUE),
       .SDcols = cols
     ]
     # Add labels to the quantiles
@@ -121,8 +125,8 @@
       x = full_dt,
       y = cbg_dt,
       by = 'cbg_home',
-      all.x = F,
-      all.y = F
+      all.x = FALSE,
+      all.y = FALSE
     )
     # Enforce subsetting (if requested)
     if (!is.null(subset)) {
@@ -133,7 +137,7 @@
     n_x = length(vars_x)
     # Create a formula for the fixed-effects smoke het. regression
     formula_fe = paste0(
-      outcome, 
+      outcome,
       ' ~ ',
       # Het. bins
       paste(vars_x[-median(seq_len(n_x))], collapse = ' + '),
@@ -143,15 +147,17 @@
       ' | ',
       # Fixed effects
       fe_spec
-    ) %>% as.formula()
+    ) %>%
+    as.formula()
     # Create a formula for the non-fixed-effects, non-smoke regression
     formula_migration = paste0(
-      outcome, 
+      outcome,
       ' ~ ',
       '-1 + ',
       # Het. bins
       paste(vars_x, collapse = ' + ')
-    ) %>% as.formula()
+    ) %>%
+    as.formula()
     # Run the FE smoke regression
     est_smoke = feols(
       fml = formula_fe,
@@ -167,23 +173,27 @@
       weights = ~pop
     )
     # Process results for figure
-    est_dt = est_smoke %>% broom::tidy(
-      conf.int = T
-    ) %>% tibble::add_row(
-      term = vars_x[median(seq_len(n_x))],
-      estimate = 0,
-      conf.low = 0,
-      conf.high = 0
-    ) %>% setDT()
+    est_dt =
+      est_smoke %>% broom::tidy(
+        conf.int = TRUE
+      ) %>%
+      tibble::add_row(
+        term = vars_x[median(seq_len(n_x))],
+        estimate = 0,
+        conf.low = 0,
+        conf.high = 0
+      ) %>%
+      setDT()
     est_dt[, `:=`(
       smoke = str_detect(term, 'smoke'),
       q = str_extract(term, '(?<=q)[0-9]+'),
       est = 'fe'
     )]
     # Repeat for migration levels
-    mig_dt = est_migration %>% broom::tidy(
-      conf.int = T
-    ) %>% setDT()
+    mig_dt =
+      est_migration %>%
+      broom::tidy(conf.int = TRUE) %>%
+      setDT()
     mig_dt[, `:=`(
       q = str_extract(term, '(?<=q)[0-9]+'),
       est = 'lvl'
@@ -193,7 +203,7 @@
     # 'q' to numeric
     est_dt[, `:=`(q = q %>% as.numeric())]
     # Create a percentile from the quantile and the number of quantiles
-    est_dt[, `:=`(p = q * (1/nq))]
+    est_dt[, `:=`(p = q * (1 / nq))]
     # Make sure we hit 100%
     est_dt[, `:=`(p = p + (1 - max(p)))]
     setorder(est_dt, smoke, q)
@@ -211,12 +221,12 @@
     ) +
     scale_y_continuous(
       name = ifelse(
-        str_detect(outcome, pattern = 'dist'), 
+        str_detect(outcome, pattern = 'dist'),
         'Distance traveled\n(km, 75th percentile)',
         '% visits away from\nhome county when smokey'
       ),
       labels = ifelse(
-        str_detect(outcome, pattern = 'dist'), 
+        str_detect(outcome, pattern = 'dist'),
         scales::comma,
         scales::percent
       )
@@ -236,7 +246,7 @@
       # ),
       subtitle = 'Quantiles\' responses to smoke'
     )
-    # Plot 2: Quantile's fixed effects 
+    # Plot 2: Quantile's fixed effects
     p2 = ggplot(
       data = est_dt[smoke == FALSE],
       aes(
@@ -246,12 +256,12 @@
     ) +
     scale_y_continuous(
       name = ifelse(
-        str_detect(outcome, pattern = 'dist'), 
+        str_detect(outcome, pattern = 'dist'),
         'Distance traveled\n(km, 75th percentile)',
         '% visits away from\nhome county when smokey'
       ),
       labels = ifelse(
-        str_detect(outcome, pattern = 'dist'), 
+        str_detect(outcome, pattern = 'dist'),
         scales::comma,
         scales::percent
       )
@@ -262,7 +272,14 @@
     geom_ribbon(fill = c1, alpha = 0.1, color = NA) +
     theme_minimal(base_family = 'Fira Sans Extra Condensed', base_size = 8) +
     theme(legend.position = 'none') +
-    ggtitle('', subtitle = paste(het_label, 'quantiles\' out-of-county travel, relative to median'))
+    ggtitle(
+      '',
+      subtitle =
+        paste(
+          het_label,
+          'quantiles\' out-of-county travel, relative to median'
+        )
+    )
     # Plot 3: Levels of migration (estimated without fixed effects)
     p3 = ggplot(
       data = est_dt[is.na(smoke)],
@@ -273,12 +290,12 @@
     ) +
     scale_y_continuous(
       name = ifelse(
-        str_detect(outcome, pattern = 'dist'), 
+        str_detect(outcome, pattern = 'dist'),
         'Distance traveled\n(km, 75th percentile)',
         '% visits away from\nhome county when smokey'
       ),
       labels = ifelse(
-        str_detect(outcome, pattern = 'dist'), 
+        str_detect(outcome, pattern = 'dist'),
         scales::comma,
         scales::percent
       )
@@ -290,7 +307,7 @@
     theme(legend.position = 'none') +
     ggtitle('', subtitle = paste(het_label, 'quantiles\' out-of-county travel'))
     # Plot 4: Quantile's demographicis
-    dem_dt = q_dt[, c(het_var, paste0(het_var, '_q')), with = F]
+    dem_dt = q_dt[, c(het_var, paste0(het_var, '_q')), with = FALSE]
     setnames(dem_dt, c('val', 'q'))
     dem_dt %<>% .[, .(med_val = fmedian(val)), q]
     dem_dt[, q := as.numeric(str_remove(q, 'q'))]
@@ -322,11 +339,15 @@
             'q:', nq,
             ifelse(
               !is.null(subset),
-              paste0('-sub:', subset_var %>% str_remove_all('[^a-z]') %>% str_remove('^i'), subset),
+              paste0(
+                '-sub:',
+                subset_var %>% str_remove_all('[^a-z]') %>% str_remove('^i'),
+                subset
+              ),
               ''
             ),
             '-est_dt.qs'
-          )          
+          )
         )
       )
       qs::qsave(
@@ -338,11 +359,15 @@
             'q:', nq,
             ifelse(
               !is.null(subset),
-              paste0('-sub:', subset_var %>% str_remove_all('[^a-z]') %>% str_remove('^i'), subset),
+              paste0(
+                '-sub:',
+                subset_var %>% str_remove_all('[^a-z]') %>% str_remove('^i'),
+                subset
+              ),
               ''
             ),
             '-dem_dt.qs'
-          )          
+          )
         )
       )
     }
@@ -371,7 +396,11 @@
           'q:', nq,
           ifelse(
             !is.null(subset),
-            paste0('-sub:', subset_var %>% str_remove_all('[^a-z]') %>% str_remove('^i'), subset),
+            paste0(
+              '-sub:',
+              subset_var %>% str_remove_all('[^a-z]') %>% str_remove('^i'),
+              subset
+            ),
             ''
           ),
           paste0('.', file_type)
@@ -383,9 +412,11 @@
         base_width = 3,
         base_height = 7
       )
-      # if (file_type == 'pdf') embed_fonts(the_file, outfile = str_replace(the_file, '\\.pdf', '-embed\\.pdf'))
+      # if (file_type == 'pdf') {
+      #   embed_fonts(the_file, outfile = str_replace(the_file, '\\.pdf', '-embed\\.pdf'))
+      # }
     }
-  }  
+  }
 
 
 # # Income, % out of county ----------------------------------------------------------------
@@ -656,7 +687,7 @@
 #     save_parts = FALSE,
 #     save_fig = TRUE
 #   )
-  
+
 
 # Income, distance traveled --------------------------------------------------------------
   # Income (All)
@@ -772,4 +803,3 @@
     save_parts = FALSE,
     save_fig = TRUE
   )
-  

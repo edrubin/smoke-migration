@@ -1,8 +1,5 @@
-
-
 # Notes ----------------------------------------------------------------------------------
-#   Goal: Find centroids of all SafeGraph CBGs
-#   Time: ~
+#   Goal:   Find centroids of all SafeGraph CBGs
 
 
 # Setup ----------------------------------------------------------------------------------
@@ -10,8 +7,6 @@
   library(pacman)
   p_load(parallel, fastverse, geojsonsf, magrittr, here)
   fastverse_extend(topics = c('DT', 'ST', 'SP', 'IO'))
-  # Fix collapse's F issue
-  F = FALSE
   # Add directory of SafeGraph data
   dir_sg = '/media/edwardrubin/Data/SafeGraph'
 
@@ -33,7 +28,8 @@
     preset = 'high'
   )
   # Drop polygon dataset and clean up
-  rm(cbg_sf); invisible(gc())
+  rm(cbg_sf)
+  invisible(gc())
 
 
 # Data work: Distances between centroids -------------------------------------------------

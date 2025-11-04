@@ -1,5 +1,3 @@
-
-
 # Notes ----------------------------------------------------------------------------------
 #   Goals:
 #     1. Find all placekeys in SafeGraph data.
@@ -13,43 +11,45 @@
   library(pacman)
   p_load(parallel, fastverse, fst, magrittr, here)
   fastverse_extend(topics = c('DT', 'ST'))
-  # Fix collapse's F issue
-  F = FALSE
   # Add directory of SafeGraph data
   dir_sg = '/media/edwardrubin/Data/SafeGraph'
 
 
 # Load data: POI geographic data ---------------------------------------------------------
   # Find the data
-  files = file.path(
-    dir_sg, 'core', 'core_poi'
-  ) %>% dir(
-    pattern = 'csv.gz',
-    full.names = TRUE,
-    recursive = TRUE
-  )
+  files =
+    file.path(
+      dir_sg, 'core', 'core_poi'
+    ) |>
+    dir(
+      pattern = 'csv.gz',
+      full.names = TRUE,
+      recursive = TRUE
+    )
   # Read in the 'core' POI data
-  poi_dt = mclapply(
-    X = files,
-    FUN = function(i) {
-      # Read the file
-      i_dt = fread(
-        i,
-        nThread = 1,
-        select = c('placekey', 'latitude', 'longitude'),
-        colClasses = c(
-          'placekey' = 'factor',
-          'latitude' = 'numeric',
-          'longitude' = 'numeric'
+  poi_dt =
+    mclapply(
+      X = files,
+      FUN = function(i) {
+        # Read the file
+        i_dt = fread(
+          i,
+          nThread = 1,
+          select = c('placekey', 'latitude', 'longitude'),
+          colClasses = c(
+            'placekey' = 'factor',
+            'latitude' = 'numeric',
+            'longitude' = 'numeric'
+          )
         )
-      )
-      # Add the file's date
-      i_dt[, file_date := str_extract(i, '202[01]/[0-9]{2}/[0-9]{2}') %>% ymd()]
-      # Return the dataset
-      return(i_dt)
-    },
-    mc.cores = 48
-  ) %>% rbindlist(use.names = TRUE, fill = TRUE)
+        # Add the file's date
+        i_dt[, file_date := str_extract(i, '202[01]/[0-9]{2}/[0-9]{2}') |> ymd()]
+        # Return the dataset
+        return(i_dt)
+      },
+      mc.cores = 48
+    ) |>
+    rbindlist(use.names = TRUE, fill = TRUE)
 
 
 # Data work: Aggregate to POI level ------------------------------------------------------
@@ -77,10 +77,10 @@
     flag_lat,
     flag_lon
   )]
-  
+
 
 # Save data ------------------------------------------------------------------------------
-  # Save 
+  # Save
   write_fst(
     x = poi_sum,
     path = here('data-processed', 'geo-summaries', 'placekey-coordinates.fst'),

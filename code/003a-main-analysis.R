@@ -38,8 +38,8 @@
   ))
   # New 'fitstat': Number of observations in millions
   fitstat_register(
-    type = 'n_m', 
-    fun = function(est) round(est$nobs/1e6, 2) %>% as.character(),
+    type = 'n_m',
+    fun = function(est) round(est$nobs / 1e6, 2) %>% as.character(),
     alias = 'N obs. (millions)'
   )
   # New 'fitstat': Mean of dependent variable
@@ -70,7 +70,7 @@
   )
   # The lag structure for the 75th percentile of distance traveled
   est_lag_dist = feols(
-    dist_p75 ~ 
+    dist_p75 ~
     csw(any_smoke, lag_any_smoke, lag2_any_smoke, lag3_any_smoke, lag4_any_smoke) |
     cbg_home +
     sw(
@@ -107,7 +107,7 @@
 
 # Regressions: Percentile heterogeneity --------------------------------------------------
   est_het_pct = feols(
-    100 * (1 - pct_same_county) ~ 
+    100 * (1 - pct_same_county) ~
     any_smoke +
     sw(
       any_smoke:hh_inc_p,
@@ -128,7 +128,7 @@
   )
   # The lag structure for the 75th percentile of distance traveled
   est_het_dist = feols(
-    dist_p75 ~ 
+    dist_p75 ~
     any_smoke +
     sw(
       any_smoke:hh_inc_p,
@@ -165,7 +165,7 @@
 # Specification chart --------------------------------------------------------------------
   # Robustness: Fixed-effect specification
   fe_est = feols(
-    1 - pct_same_county ~ 
+    1 - pct_same_county ~
     any_smoke + lag_any_smoke + lag2_any_smoke + lag3_any_smoke |
     sw(
       county + mo + yr,
@@ -180,7 +180,7 @@
       # county ^ wk + wk ^ yr,
       # county ^ wk + wk ^ yr + county ^ yr,
       # county ^ wk ^ yr,
-# TODO: Add more FE specifications 
+# TODO: Add more FE specifications
       cbg_home + mo + yr,
       cbg_home + county ^ mo + county ^ yr,
       cbg_home + mo ^ yr,
@@ -193,15 +193,17 @@
     weights = ~pop
   )
   # Create a table of the results and specifications
-  fe_dt = lapply(
-    X = seq_len(fe_est %>% length()),
-    FUN = function(i) {
-      # Get results (with confidence intervals)
-      est_dt = broom::tidy(fe_est[[i]], conf.int = TRUE) %>% setDT()
-      # Add fixed effects
-      est_dt[, controls := fe_est[[i]]$fixef_vars %>% paste(collapse = ', ')]
-    }
-  ) %>% rbindlist()
+  fe_dt =
+    lapply(
+      X = seq_len(fe_est %>% length()),
+      FUN = function(i) {
+        # Get results (with confidence intervals)
+        est_dt = broom::tidy(fe_est[[i]], conf.int = TRUE) %>% setDT()
+        # Add fixed effects
+        est_dt[, controls := fe_est[[i]]$fixef_vars %>% paste(collapse = ', ')]
+      }
+    ) %>%
+    rbindlist()
   # Plot specification curve for 'any smoke'
   plot_specs(
     df = fe_dt[term == 'any_smoke'],
@@ -229,7 +231,7 @@
 
   # Check the denominator (total visits)
   feols(
-    c(total_visits, log(total_visits)) ~ 
+    c(total_visits, log(total_visits)) ~
     csw(any_smoke, lag_any_smoke, lag2_any_smoke, lag3_any_smoke) |
     # county + mo + yr,
     county ^ mo + county ^ yr,
@@ -241,7 +243,7 @@
 
   # Check rural/urban split
   feols(
-    1 - pct_same_county ~ 
+    1 - pct_same_county ~
     any_smoke + lag_any_smoke + lag2_any_smoke |
     # county + mo + yr,
     # county ^ mo + county ^ yr,
@@ -255,12 +257,12 @@
 
   # Het. by (CBG's) household income quantile and rural-urban split
   feols(
-    # total_visits ~ 
-    1 - pct_same_county ~ 
-    # hh_inc_q1 + 
-    hh_inc_q2 + 
-    hh_inc_q3 + 
-    hh_inc_q4 + 
+    # total_visits ~
+    1 - pct_same_county ~
+    # hh_inc_q1 +
+    hh_inc_q2 +
+    hh_inc_q3 +
+    hh_inc_q4 +
     # any_smoke +
     hh_inc_q1 : any_smoke +
     hh_inc_q2 : any_smoke +
@@ -278,8 +280,8 @@
 
   # Urban counties: Estimate as separate regressions
   feols(
-    # total_visits ~ 
-    1 - pct_same_county ~ 
+    # total_visits ~
+    1 - pct_same_county ~
     any_smoke |
     # county + mo + yr,
     county ^ mo + county ^ yr,
@@ -293,12 +295,12 @@
 
   # Het. by 'share white' quantile and rural-urban split
   feols(
-    # total_visits ~ 
-    1 - pct_same_county ~ 
-    # shr_white_q1 + 
-    shr_white_q2 + 
-    shr_white_q3 + 
-    shr_white_q4 + 
+    # total_visits ~
+    1 - pct_same_county ~
+    # shr_white_q1 +
+    shr_white_q2 +
+    shr_white_q3 +
+    shr_white_q4 +
     # any_smoke +
     shr_white_q1 : any_smoke +
     shr_white_q2 : any_smoke +
@@ -316,28 +318,28 @@
 
   # Het. by finer income quantiles
   hh20 = feols(
-    # total_visits ~ 
-    1 - pct_same_county ~ 
-    hh_inc_q01 + 
-    hh_inc_q02 + 
-    hh_inc_q03 + 
-    hh_inc_q04 + 
-    hh_inc_q05 + 
-    hh_inc_q06 + 
-    hh_inc_q07 + 
-    hh_inc_q08 + 
-    hh_inc_q09 + 
-    # hh_inc_q10 + 
-    hh_inc_q11 + 
-    hh_inc_q12 + 
-    hh_inc_q13 + 
-    hh_inc_q14 + 
-    hh_inc_q15 + 
-    hh_inc_q16 + 
-    hh_inc_q17 + 
-    hh_inc_q18 + 
-    hh_inc_q19 + 
-    hh_inc_q20 + 
+    # total_visits ~
+    1 - pct_same_county ~
+    hh_inc_q01 +
+    hh_inc_q02 +
+    hh_inc_q03 +
+    hh_inc_q04 +
+    hh_inc_q05 +
+    hh_inc_q06 +
+    hh_inc_q07 +
+    hh_inc_q08 +
+    hh_inc_q09 +
+    # hh_inc_q10 +
+    hh_inc_q11 +
+    hh_inc_q12 +
+    hh_inc_q13 +
+    hh_inc_q14 +
+    hh_inc_q15 +
+    hh_inc_q16 +
+    hh_inc_q17 +
+    hh_inc_q18 +
+    hh_inc_q19 +
+    hh_inc_q20 +
     # any_smoke +
     hh_inc_q01 : any_smoke +
     hh_inc_q02 : any_smoke +
@@ -349,16 +351,16 @@
     hh_inc_q08 : any_smoke +
     hh_inc_q09 : any_smoke +
     hh_inc_q10 : any_smoke +
-    hh_inc_q11 : any_smoke + 
-    hh_inc_q12 : any_smoke + 
-    hh_inc_q13 : any_smoke + 
-    hh_inc_q14 : any_smoke + 
-    hh_inc_q15 : any_smoke + 
-    hh_inc_q16 : any_smoke + 
-    hh_inc_q17 : any_smoke + 
-    hh_inc_q18 : any_smoke + 
-    hh_inc_q19 : any_smoke + 
-    hh_inc_q20 : any_smoke | 
+    hh_inc_q11 : any_smoke +
+    hh_inc_q12 : any_smoke +
+    hh_inc_q13 : any_smoke +
+    hh_inc_q14 : any_smoke +
+    hh_inc_q15 : any_smoke +
+    hh_inc_q16 : any_smoke +
+    hh_inc_q17 : any_smoke +
+    hh_inc_q18 : any_smoke +
+    hh_inc_q19 : any_smoke +
+    hh_inc_q20 : any_smoke |
     # county + mo + yr,
     county ^ mo + county ^ yr,
     # county + mo ^ yr,
@@ -369,14 +371,17 @@
     weights = ~pop
   )
   # Process results for figure
-  hh20_dt = hh20 %>% broom::tidy(
-    conf.int = T
-  ) %>% tibble::add_row(
-    term = 'hh_inc_q10',
-    estimate = 0,
-    conf.low = 0,
-    conf.high = 0
-  ) %>% setDT()
+  hh20_dt =
+    hh20 %>% broom::tidy(
+      conf.int = TRUE
+    ) %>%
+    tibble::add_row(
+      term = 'hh_inc_q10',
+      estimate = 0,
+      conf.low = 0,
+      conf.high = 0
+    ) %>%
+    setDT()
   hh20_dt[, `:=`(
     smoke = str_detect(term, 'smoke'),
     q = str_extract(term, '(?<=q)[0-9]{2}')
@@ -393,9 +398,12 @@
       y = estimate, ymin = conf.low, ymax = conf.high,
     )
   ) +
-  scale_y_continuous('Pct. visits away from home county when smokey', labels = scales::percent) +
+  scale_y_continuous(
+    'Pct. visits away from home county when smokey',
+    labels = scales::percent
+  ) +
   scale_x_continuous('Income quantile') +
-  geom_hline(yintercept = 0, size = 1/4) +
+  geom_hline(yintercept = 0, size = .25) +
   geom_pointrange(color = c2) +
   geom_ribbon(fill = c2, alpha = 0.1, color = NA) +
   theme_minimal(base_family = 'Fira Sans Extra Condensed') +
@@ -404,7 +412,7 @@
     'Differences in mobility and smoke response for 20 income quantiles',
     subtitle = 'Quantile\'s responses to smoke'
   )
-  # Plot 2: 
+  # Plot 2:
   hh20p2 = ggplot(
     data = hh20_dt[smoke == FALSE],
     aes(
@@ -414,7 +422,7 @@
   ) +
   scale_y_continuous('Pct. visits away from home county', labels = scales::percent) +
   scale_x_continuous('Income quantile') +
-  geom_hline(yintercept = 0, size = 1/4) +
+  geom_hline(yintercept = 0, size = .25) +
   geom_pointrange(color = c1) +
   geom_ribbon(fill = c1, alpha = 0.1, color = NA) +
   theme_minimal(base_family = 'Fira Sans Extra Condensed') +
@@ -426,28 +434,28 @@
 
   # Het. by finer income quantiles
   hi20 = feols(
-    # total_visits ~ 
-    1 - pct_same_county ~ 
-    shr_hispanic_q01 + 
-    shr_hispanic_q02 + 
-    shr_hispanic_q03 + 
-    shr_hispanic_q04 + 
-    shr_hispanic_q05 + 
-    shr_hispanic_q06 + 
-    shr_hispanic_q07 + 
-    shr_hispanic_q08 + 
-    shr_hispanic_q09 + 
-    # shr_hispanic_q10 + 
-    shr_hispanic_q11 + 
-    shr_hispanic_q12 + 
-    shr_hispanic_q13 + 
-    shr_hispanic_q14 + 
-    shr_hispanic_q15 + 
-    shr_hispanic_q16 + 
-    shr_hispanic_q17 + 
-    shr_hispanic_q18 + 
-    shr_hispanic_q19 + 
-    shr_hispanic_q20 + 
+    # total_visits ~
+    1 - pct_same_county ~
+    shr_hispanic_q01 +
+    shr_hispanic_q02 +
+    shr_hispanic_q03 +
+    shr_hispanic_q04 +
+    shr_hispanic_q05 +
+    shr_hispanic_q06 +
+    shr_hispanic_q07 +
+    shr_hispanic_q08 +
+    shr_hispanic_q09 +
+    # shr_hispanic_q10 +
+    shr_hispanic_q11 +
+    shr_hispanic_q12 +
+    shr_hispanic_q13 +
+    shr_hispanic_q14 +
+    shr_hispanic_q15 +
+    shr_hispanic_q16 +
+    shr_hispanic_q17 +
+    shr_hispanic_q18 +
+    shr_hispanic_q19 +
+    shr_hispanic_q20 +
     # any_smoke +
     shr_hispanic_q01 : any_smoke +
     shr_hispanic_q02 : any_smoke +
@@ -459,16 +467,16 @@
     shr_hispanic_q08 : any_smoke +
     shr_hispanic_q09 : any_smoke +
     shr_hispanic_q10 : any_smoke +
-    shr_hispanic_q11 : any_smoke + 
-    shr_hispanic_q12 : any_smoke + 
-    shr_hispanic_q13 : any_smoke + 
-    shr_hispanic_q14 : any_smoke + 
-    shr_hispanic_q15 : any_smoke + 
-    shr_hispanic_q16 : any_smoke + 
-    shr_hispanic_q17 : any_smoke + 
-    shr_hispanic_q18 : any_smoke + 
-    shr_hispanic_q19 : any_smoke + 
-    shr_hispanic_q20 : any_smoke | 
+    shr_hispanic_q11 : any_smoke +
+    shr_hispanic_q12 : any_smoke +
+    shr_hispanic_q13 : any_smoke +
+    shr_hispanic_q14 : any_smoke +
+    shr_hispanic_q15 : any_smoke +
+    shr_hispanic_q16 : any_smoke +
+    shr_hispanic_q17 : any_smoke +
+    shr_hispanic_q18 : any_smoke +
+    shr_hispanic_q19 : any_smoke +
+    shr_hispanic_q20 : any_smoke |
     # county + mo + yr,
     county ^ mo + county ^ yr,
     # county + mo ^ yr,
@@ -478,14 +486,17 @@
     weights = ~pop
   )
   # Process results for figure
-  hi20_dt = hi20 %>% broom::tidy(
-    conf.int = T
-  ) %>% tibble::add_row(
-    term = 'shr_hispanic_q10',
-    estimate = 0,
-    conf.low = 0,
-    conf.high = 0
-  ) %>% setDT()
+  hi20_dt =
+    hi20 %>% broom::tidy(
+      conf.int = TRUE
+    ) %>%
+    tibble::add_row(
+      term = 'shr_hispanic_q10',
+      estimate = 0,
+      conf.low = 0,
+      conf.high = 0
+    ) %>%
+    setDT()
   hi20_dt[, `:=`(
     smoke = str_detect(term, 'smoke'),
     q = str_extract(term, '(?<=q)[0-9]{2}')
@@ -502,9 +513,12 @@
       y = estimate, ymin = conf.low, ymax = conf.high,
     )
   ) +
-  scale_y_continuous('Pct. visits away from home county when smokey', labels = scales::percent) +
+  scale_y_continuous(
+    'Pct. visits away from home county when smokey',
+    labels = scales::percent
+  ) +
   scale_x_continuous('\'hiite\' quantile') +
-  geom_hline(yintercept = 0, size = 1/4) +
+  geom_hline(yintercept = 0, size = .25) +
   geom_pointrange(color = c2) +
   geom_ribbon(fill = c2, alpha = 0.1, color = NA) +
   theme_minimal(base_family = 'Fira Sans Extra Condensed') +
@@ -513,7 +527,7 @@
     'Differences in mobility and smoke response for 20 Hispaniic quantiles',
     subtitle = 'Quantile\'s responses to smoke'
   )
-  # Plot 2: 
+  # Plot 2:
   hi20p2 = ggplot(
     data = hi20_dt[smoke == FALSE],
     aes(
@@ -523,7 +537,7 @@
   ) +
   scale_y_continuous('Pct. visits away from home county', labels = scales::percent) +
   scale_x_continuous('\'White\' quantile') +
-  geom_hline(yintercept = 0, size = 1/4) +
+  geom_hline(yintercept = 0, size = .25) +
   geom_pointrange(color = c1) +
   geom_ribbon(fill = c1, alpha = 0.1, color = NA) +
   theme_minimal(base_family = 'Fira Sans Extra Condensed') +
@@ -534,12 +548,12 @@
 
   # Robustness: Het. by 'share white' quantile with and without county-size controls
   feols(
-    # total_visits ~ 
-    1 - pct_same_county ~ 
-    # shr_white_q1 + 
-    shr_white_q2 + 
-    shr_white_q3 + 
-    shr_white_q4 + 
+    # total_visits ~
+    1 - pct_same_county ~
+    # shr_white_q1 +
+    shr_white_q2 +
+    shr_white_q3 +
+    shr_white_q4 +
     # any_smoke +
     shr_white_q1 : any_smoke +
     shr_white_q2 : any_smoke +
@@ -555,12 +569,12 @@
   ) %>% etable()
 
   feols(
-    # total_visits ~ 
-    1 - pct_same_county ~ 
-    # shr_black_q1 + 
-    shr_black_q2 + 
-    shr_black_q3 + 
-    shr_black_q4 + 
+    # total_visits ~
+    1 - pct_same_county ~
+    # shr_black_q1 +
+    shr_black_q2 +
+    shr_black_q3 +
+    shr_black_q4 +
     # any_smoke +
     shr_black_q1 : any_smoke +
     shr_black_q2 : any_smoke +
@@ -577,12 +591,12 @@
   ) %>% etable()
 
   feols(
-    # total_visits ~ 
-    1 - pct_same_county ~ 
-    # shr_hispanic_q1 + 
-    shr_hispanic_q2 + 
-    shr_hispanic_q3 + 
-    shr_hispanic_q4 + 
+    # total_visits ~
+    1 - pct_same_county ~
+    # shr_hispanic_q1 +
+    shr_hispanic_q2 +
+    shr_hispanic_q3 +
+    shr_hispanic_q4 +
     any_smoke +
     # shr_hispanic_q1 : any_smoke +
     shr_hispanic_q2 : any_smoke +
@@ -599,12 +613,12 @@
   ) %>% etable()
 
   feols(
-    # total_visits ~ 
-    1 - pct_same_county ~ 
-    # shr_employed_q1 + 
-    shr_employed_q2 + 
-    shr_employed_q3 + 
-    shr_employed_q4 + 
+    # total_visits ~
+    1 - pct_same_county ~
+    # shr_employed_q1 +
+    shr_employed_q2 +
+    shr_employed_q3 +
+    shr_employed_q4 +
     # any_smoke +
     shr_employed_q1 : any_smoke +
     shr_employed_q2 : any_smoke +
@@ -621,12 +635,12 @@
   ) %>% etable()
 
   feols(
-    # total_visits ~ 
-    1 - pct_same_county ~ 
-    # pop_q1 + 
-    pop_q2 + 
-    pop_q3 + 
-    pop_q4 + 
+    # total_visits ~
+    1 - pct_same_county ~
+    # pop_q1 +
+    pop_q2 +
+    pop_q3 +
+    pop_q4 +
     # any_smoke +
     pop_q1 : any_smoke +
     pop_q2 : any_smoke +
@@ -646,7 +660,7 @@
     X = paste0('q', 1:4),
     FUN = function(q) {
       feols(
-        1 - pct_same_county ~ 
+        1 - pct_same_county ~
         any_mh_smoke + lag_any_mh_smoke + lag2_any_mh_smoke + lag3_any_mh_smoke |
         # county + mo + yr,
         county ^ mo + county ^ yr,

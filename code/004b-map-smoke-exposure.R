@@ -1,3 +1,5 @@
+# Notes ----------------------------------------------------------------------------------
+#   Goal:   Create a map (shp, hist, legend) of West Coast CBGs' smoke exposures
 
 
 # Setup ----------------------------------------------------------------------------------
@@ -6,8 +8,6 @@
   p_load(parallel, fastverse, here, cowplot)
   fastverse_extend(topics = c('DT', 'ST', 'SP', 'VI'))
   extrafont::loadfonts(quiet = TRUE)
-  # Fix collapse's F issue
-  F = FALSE
   # Add directory of SafeGraph data
   dir_sg = '/media/edwardrubin/Data/SafeGraph'
 
@@ -32,7 +32,7 @@
   )]
   # Find the number of observations for each CBG
   smoke_panel[, n_weeks := .N, cbg_home]
-  # Collapse smoke exposure to CBG level cross-sectional dataset 
+  # Collapse smoke exposure to CBG level cross-sectional dataset
   cbg_smoke = smoke_panel[, .(
     wks_obs = ffirst(n_weeks),
     wks_smoke = fsum(any_smoke)
@@ -133,7 +133,7 @@
   theme_void(base_family = 'Fira Sans Extra Condensed', base_size = 6.5) +
   theme(legend.position = 'none')
   # Save
-  save_plot(  
+  save_plot(
     # filename = here('figures', 'cbg-smoke-legend.png'),
     filename = here('figures', 'cbg-smoke-legend.pdf'),
     plot = h2 + coord_cartesian(xlim = c(40, 100)),
