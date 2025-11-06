@@ -11,6 +11,15 @@
 # Load and prep data ---------------------------------------------------------------------
   # Source the script that loads and prepares the data
   here::here('code', '002b-prep-analysis-data.R') |> source()
+  # Drop rural areas (focusing on urban)
+  full_dt %<>% .[i_rural == 0]
+  # Create an indicator for fire-affected areas
+  full_dt[, fire := cbg_home %in% fire_dt[fire_year %in% 2018:2021, cbg]]
+  # Create week-of-sample and month-of-sample variables
+  full_dt[, `:=`(
+    wos = paste0(yr, '-', sprintf('%02d', wk)),
+    mos = paste0(yr, '-', sprintf('%02d', mo))
+  )]
 
 
 # Setup: Regression tables ---------------------------------------------------------------
@@ -20,10 +29,14 @@
     lag_any_smoke = 'Lag of any smoke',
     lag2_any_smoke = 'Lag$_2$ of any smoke',
     lag3_any_smoke = 'Lag$_3$ of any smoke',
+    cbg_home = 'CBG',
     county = 'County',
+    state = 'State',
     mo = 'Month',
     yr = 'Year',
     wk = 'Week',
+    wos = 'Week of sample',
+    mos = 'Month of sample',
     pop = 'CBG population',
     hospital_visits_total = 'Total hospital visits',
     `hospital_visits_total/total_visits` = 'Hospital-visits share',
@@ -54,35 +67,23 @@
 
 # Regressions: Lags ----------------------------------------------------------------------
   # Lag structure: Percent of visits out-of-county
-  est_lag_pct = feols(
-    100 * (1 - pct_same_county) ~
-    csw(any_smoke, lag_any_smoke, lag2_any_smoke, lag3_any_smoke, lag4_any_smoke) |
-    cbg_home +
-    sw(
-      wk ^ yr,
-      state ^ wk ^ yr
-    ),
-    data = full_dt[i_rural == 0],
-    # data = full_dt[!(cbg_home %in% fire_dt[fire_year %in% 2018:2021, cbg]) & yr != 2021],
-    lean = TRUE,
-    cluster = ~county + mo,
-    weights = ~pop
-  )
-  # The lag structure for the 75th percentile of distance traveled
-  est_lag_dist = feols(
-    dist_p75 ~
-    csw(any_smoke, lag_any_smoke, lag2_any_smoke, lag3_any_smoke, lag4_any_smoke) |
-    cbg_home +
-    sw(
-      wk ^ yr,
-      state ^ wk ^ yr
-    ),
-    data = full_dt[i_rural == 0],
-    lean = TRUE,
-    # data = full_dt[!(cbg_home %in% fire_dt[fire_year %in% 2018:2021, cbg]) & yr != 2021],
-    cluster = ~county + mo,
-    weights = ~pop
-  )
+  est_lag_pct =
+    feols(
+      100 * (1 - pct_same_county) ~
+      csw(any_smoke, lag_any_smoke, lag2_any_smoke, lag3_any_smoke, lag4_any_smoke) |
+      cbg_home +
+      sw(
+        wos,
+        wos + state ^ yr + state ^ mo,
+        wos + state ^ yr,
+        state ^ wos
+      ),
+      data = full_dt,
+      fsplit = ~fire %keep% 'FALSE',
+      lean = TRUE,
+      cluster = ~county + mo ^ yr,
+      weights = ~pop
+    )
   # Save results
   qsave(
     x = est_lag_pct,
@@ -90,6 +91,25 @@
     preset = 'high',
     nthreads = 16
   )
+  # The lag structure for the 75th percentile of distance traveled
+  est_lag_dist =
+    feols(
+      dist_p75 ~
+      csw(any_smoke, lag_any_smoke, lag2_any_smoke, lag3_any_smoke, lag4_any_smoke) |
+      cbg_home +
+      sw(
+        wos,
+        wos + state ^ yr + state ^ mo,
+        wos + state ^ yr,
+        state ^ wos
+      ),
+      data = full_dt,
+      fsplit = ~fire %keep% 'FALSE',
+      lean = TRUE,
+      cluster = ~county + mo ^ yr,
+      weights = ~pop
+    )
+  # Save results
   qsave(
     x = est_lag_dist,
     file = here('data-results', 'est-lag-dist.qs'),
@@ -106,47 +126,54 @@
 
 
 # Regressions: Percentile heterogeneity --------------------------------------------------
-  est_het_pct = feols(
-    100 * (1 - pct_same_county) ~
-    any_smoke +
-    sw(
-      any_smoke:hh_inc_p,
-      any_smoke:shr_black_p,
-      any_smoke:shr_hispanic_p,
-      any_smoke:shr_white_p
-    ) |
-    cbg_home +
-    sw(
-      wk ^ yr,
-      state ^ wk ^ yr
-    ),
-    data = full_dt[i_rural == 0],
-    # data = full_dt[!(cbg_home %in% fire_dt[fire_year %in% 2018:2021, cbg]) & yr != 2021],
-    lean = TRUE,
-    cluster = ~county + mo,
-    weights = ~pop
-  )
-  # The lag structure for the 75th percentile of distance traveled
-  est_het_dist = feols(
-    dist_p75 ~
-    any_smoke +
-    sw(
-      any_smoke:hh_inc_p,
-      any_smoke:shr_black_p,
-      any_smoke:shr_hispanic_p,
-      any_smoke:shr_white_p
-    ) |
-    cbg_home +
-    sw(
-      wk ^ yr,
-      state ^ wk ^ yr
-    ),
-    data = full_dt[i_rural == 0],
-    lean = TRUE,
-    # data = full_dt[!(cbg_home %in% fire_dt[fire_year %in% 2018:2021, cbg]) & yr != 2021],
-    cluster = ~county + mo,
-    weights = ~pop
-  )
+  # Heterogeneity by CBG characteristics: Percent of visits out-of-county
+  est_het_pct =
+    feols(
+      100 * (1 - pct_same_county) ~
+      any_smoke +
+      sw(
+        any_smoke:hh_inc_p,
+        any_smoke:shr_black_p,
+        any_smoke:shr_hispanic_p,
+        any_smoke:shr_white_p
+      ) |
+      cbg_home +
+      sw(
+        wos,
+        wos + state ^ yr + state ^ mo,
+        wos + state ^ yr,
+        state ^ wos
+      ),
+      data = full_dt,
+      fsplit = ~fire %keep% 0,
+      lean = TRUE,
+      cluster = ~county + mos,
+      weights = ~pop
+    )
+  # Heterogeneity by CBG characteristics: 75th percentile of distance traveled
+  est_het_dist =
+    feols(
+      dist_p75 ~
+      any_smoke +
+      sw(
+        any_smoke:hh_inc_p,
+        any_smoke:shr_black_p,
+        any_smoke:shr_hispanic_p,
+        any_smoke:shr_white_p
+      ) |
+      cbg_home +
+      sw(
+        wos,
+        wos + state ^ yr + state ^ mo,
+        wos + state ^ yr,
+        state ^ wos
+      ),
+      data = full_dt,
+      fsplit = ~fire %keep% 0,
+      lean = TRUE,
+      cluster = ~county + mos,
+      weights = ~pop
+    )
   # Save results
   qsave(
     x = est_het_pct,
@@ -188,7 +215,7 @@
       cbg_home + wk ^ yr
     ),
     data = full_dt,
-    # data = full_dt[!(cbg_home %in% fire_dt[fire_year %in% 2018:2021, cbg]) & yr != 2021],
+    fsplit = ~fire %keep% 0,
     cluster = ~county + mo,
     weights = ~pop
   )
