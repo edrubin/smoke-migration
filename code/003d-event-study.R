@@ -19,8 +19,8 @@
   post_all_smoke = FALSE
   # Build event-study dataset
   # Set event-study length
-  n_pre = 5
-  n_post = 5
+  n_pre = 6
+  n_post = 3
   n = n_pre + n_post + 1
   # Build dataset for finding smoke 'periods'
   event_dt = full_dt[, .(cbg_home, date_start, any_smoke)]
@@ -161,49 +161,179 @@
     out_state = fmean(1 - pct_same_state),
     n = .N
   ), event_period]
+
+
+# Define variables of interest -----------------------------------------------------------
+  # Outcomes
+  outcome_dt = data.table(
+    var =
+      c(
+        '1 - pct_same_county',
+        '1 - pct_same_state',
+        'dist_median',
+        'dist_p75',
+        'total_visits',
+        'total_visits - visits_same_county',
+        'total_visits - visits_same_state',
+        'any_smoke'
+      ),
+    label =
+      c(
+        'Out migration:\nPercentage of visits outside of home county',
+        'Out migration:\nPercentage of visits outside of home state',
+        'Out migration:\nMedian distance from home (km)',
+        'Out migration:\n Distance from home (km, 75th pcntl.)',
+        ' \nTotal POI visits',
+        ' \nVisits to non-home counties',
+        ' \nVisits to non-home states',
+        'Smoke exposure:\nPercentage of population facing smoke'
+      ),
+    format =
+      c(
+        percent,
+        percent,
+        comma,
+        comma,
+        comma,
+        comma,
+        comma,
+        percent
+      ),
+    filename =
+      c(
+        'event-study-county',
+        'event-study-state',
+        'event-study-dist',
+        'event-study-dist75',
+        'event-study-total-visits',
+        'event-study-visits-other-county',
+        'event-study-visits-other-state',
+        'event-study-smoke'
+      ),
+    clr =
+      c(
+        viridis::magma(100)[22],
+        viridis::magma(100)[22],
+        viridis::magma(100)[22],
+        viridis::magma(100)[22],
+        viridis::magma(100)[42],
+        viridis::magma(100)[62],
+        viridis::magma(100)[62],
+        viridis::magma(100)[72]
+      )
+  )
   # Excluded period: 1 before the end of the pre-period
   p_drop = paste0('p', str_pad(n_pre - 1, 2, 'left', 0))
 
 
-# Estimate event study -------------------------------------------------------------------
-# TODO Clean up in-progress code below
-  # Estimate
-  test =
-    feols(
-      c(
-        1 - pct_same_county,
-        1 - pct_same_state,
-        total_visits - visits_same_county,
-        total_visits - visits_same_state,
-        any_smoke,
-        total_visits
-      ) ~
-      p01 + p02 + p03 + p05 + p06 + p07 + p08 + p09 + p10 + p11 |
-      cbg_wk + state ^ yr,
-      data = event_trt[county != '06073' & i_rural == 0 & !(cbg_home %in% fire_dt$cbg)],
-      cluster = ~county + mo ^ yr,
-      weights = ~pop,
+# Estimate and plot event study ----------------------------------------------------------
+    # Build formula
+    event_f =
+      paste0(
+        # Outcome variables
+        'c(',
+        paste(outcome_dt$var, collapse = ', '),
+        ') ~ ',
+        # Event-study period indicators (excluding p_drop)
+        str_subset(names(event_trt), '^p[0-9]{2}$') |>
+          str_subset(p_drop, negate = TRUE) |>
+          paste(collapse = ' + '),
+        # Fixed effects
+        ' | cbg_wk + state ^ yr'
+      ) |>
+      as.formula()
+    # Estimate the event study
+    event_est =
+      feols(
+        event_f,
+        data = event_trt[county != '06073' & i_rural == 0 & !(cbg_home %in% fire_dt$cbg)],
+        cluster = ~county + mo ^ yr,
+        weights = ~pop
+      )
+    # Create dataset for the event study: estimates and CIs
+    plot_dt = cbind(
+      event_est %>% coeftable() %>% extract(1:4),
+      event_est %>% confint() %>% extract(4:5)
     )
-  # Plot
-  for (i in seq_along(test)) test[[i]] |> coefplot()
+    setDT(plot_dt)
+    setnames(plot_dt, c('id', 'outcome', 'period', 'estimate', 'conf_low', 'conf_high'))
+    # Add omitted period
+    plot_dt = rbindlist(list(
+      plot_dt,
+      data.table(
+        id = seq_along(outcome_dt$var),
+        outcome = outcome_dt$var,
+        period = p_drop,
+        estimate = 0,
+        conf_low = 0,
+        conf_high = 0
+      )
+    ), use.names = TRUE, fill = TRUE)
+    # Make event time
+    setorder(plot_dt, id, period)
+    plot_dt[, time := rep(-n_pre:n_post, outcome_dt[, .N])]
+    # Iterate over outcomes to plot
+    plot_list = lapply(
+      X = seq_len(outcome_dt[, .N]),
+      FUN = function(i) {
+        # Plot
+        event_study =
+          ggplot(
+            data = plot_dt[id == i],
+            aes(
+              x = time,
+              y = estimate,
+              ymin = conf_low, ymax = conf_high,
+            )
+          ) +
+          geom_hline(yintercept = 0, size = .25) +
+          geom_vline(xintercept = 0, size = .25, linetype = 'dashed') +
+          scale_x_continuous('Weeks relative to first smoke exposure') +
+          scale_y_continuous(
+            name = outcome_dt$label[i],
+            labels = outcome_dt$format[[i]]
+          ) +
+          geom_ribbon(
+            color = NA,
+            fill = outcome_dt$clr[i],
+            position = position_dodge2(width = .3),
+            alpha = .1
+          ) +
+          geom_pointrange(
+            position = position_dodge2(width = .3),
+            color = outcome_dt$clr[i]
+          ) +
+          theme_minimal(
+            base_family = 'Fira Sans Extra Condensed',
+            base_size = 8
+          ) +
+          theme(legend.position = 'none')
+        # event_study
+        # Save
+        ggsave(
+          path = here('figures', 'event-study'),
+          # filename = paste0(outcome_dt$filename[i], '.pdf'),
+          # device = cairo_pdf,
+          filename = paste0(outcome_dt$filename[i], '.svg'),
+          device = svglite::svglite,
+          plot = event_study,
+          height = 2.25,
+          width = 6.5,
+          dpi = 450
+        )
+      }
+    )
 
 
-# Estimate event study: Raw coefficients -------------------------------------------------
+# Raw coefficients -----------------------------------------------------------------------
   # Iterate over outcome variables
   for (i in 1:8) {
     # Build formula
     event_f =
       paste0(
-        c(
-          '1 - pct_same_county ~ ',
-          '1 - pct_same_state ~ ',
-          'dist_median ~ ',
-          'dist_p75 ~ ',
-          'total_visits ~ ',
-          'total_visits - visits_same_county ~ ',
-          'total_visits - visits_same_state ~ ',
-          'any_smoke ~ '
-        )[i],
+        # Outcome variables
+        outcome_vars[i], ' ~ ',
+        # Event-study period indicators (excluding p_drop)
         str_subset(names(event_trt), '^p[0-9]{2}$') |>
           str_subset(p_drop, negate = TRUE) |>
           paste(collapse = ' + ')
