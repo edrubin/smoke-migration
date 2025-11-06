@@ -21,7 +21,11 @@
   p_load(patchwork)
   # Load fonts
   suppressMessages(
-    font_import(paths = '~/.fonts', pattern = 'FiraSansExtra', prompt = FALSE)
+    font_import(
+      paths = here('fonts'),
+      pattern = 'FiraSansExtra',
+      prompt = FALSE
+    )
   )
   loadfonts(quiet = TRUE)
 
