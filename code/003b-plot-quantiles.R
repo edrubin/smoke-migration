@@ -16,7 +16,10 @@ args = commandArgs(trailingOnly = TRUE)
 # Setup ----------------------------------------------------------------------------------
   # Packages
   library(pacman)
-  p_load(janitor, fastverse, gtools, extrafont, fastDummies, fst, fixest, magrittr, here)
+  p_load(
+    janitor, svglite, fastverse, gtools, extrafont,
+    fastDummies, fst, fixest, magrittr, here
+  )
   fastverse_extend(topics = c('DT', 'ST', 'VI'))
   p_load(patchwork)
   # Fix 'extrafont' issue
