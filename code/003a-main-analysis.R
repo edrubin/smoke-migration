@@ -29,6 +29,7 @@
     lag_any_smoke = 'Lag of any smoke',
     lag2_any_smoke = 'Lag$_2$ of any smoke',
     lag3_any_smoke = 'Lag$_3$ of any smoke',
+    lag4_any_smoke = 'Lag$_4$ of any smoke',
     cbg_home = 'CBG',
     county = 'County',
     state = 'State',
@@ -91,6 +92,14 @@
     preset = 'high',
     nthreads = 16
   )
+  # Latex table
+  etable(
+    est_lag_pct[fixef = 3, sample = 'FALSE'],
+    tex = TRUE,
+    style.tex = style.tex('aer'),
+    fitstat = ~ n_m + y_mean,
+    digits = 2
+  )
   # The lag structure for the 75th percentile of distance traveled
   est_lag_dist =
     feols(
@@ -116,13 +125,17 @@
     preset = 'high',
     nthreads = 16
   )
-  # etable(
-  #   est_lag_pct, est_lag_dist,
-  #   tex = TRUE,
-  #   style.tex = style.tex("aer"),
-  #   fitstat = ~ n_m + y_mean,
-  #   digits = 2
-  # )
+  # Latex table
+  etable(
+    est_lag_dist[fixef = 3, sample = 'FALSE'],
+    tex = TRUE,
+    style.tex = style.tex('aer'),
+    fitstat = ~ n_m + y_mean,
+    digits = 2
+  )
+  # Clean up
+  rm(est_lag_pct, est_lag_dist)
+  invisible(gc())
 
 
 # Regressions: Percentile heterogeneity --------------------------------------------------
@@ -145,11 +158,18 @@
         state ^ wos
       ),
       data = full_dt,
-      fsplit = ~fire %keep% 0,
+      fsplit = ~fire %keep% 'FALSE',
       lean = TRUE,
       cluster = ~county + mos,
       weights = ~pop
     )
+  # Save results
+  qsave(
+    x = est_het_pct,
+    file = here('data-results', 'est-het-pct.qs'),
+    preset = 'high',
+    nthreads = 16
+  )
   # Heterogeneity by CBG characteristics: 75th percentile of distance traveled
   est_het_dist =
     feols(
@@ -169,18 +189,12 @@
         state ^ wos
       ),
       data = full_dt,
-      fsplit = ~fire %keep% 0,
+      fsplit = ~fire %keep% 'FALSE',
       lean = TRUE,
       cluster = ~county + mos,
       weights = ~pop
     )
   # Save results
-  qsave(
-    x = est_het_pct,
-    file = here('data-results', 'est-het-pct.qs'),
-    preset = 'high',
-    nthreads = 16
-  )
   qsave(
     x = est_het_dist,
     file = here('data-results', 'est-het-dist.qs'),
