@@ -258,7 +258,14 @@
   )
   # Latex table
   etable(
-    est_het_total[fixef = 3, sample = 'FALSE'],
+    est_het_total[lhs = 1, fixef = 3, sample = 'FALSE'],
+    tex = TRUE,
+    style.tex = style.tex('aer'),
+    fitstat = ~ n_m + y_mean,
+    digits = 2
+  )
+  etable(
+    est_het_total[lhs = 2, fixef = 3, sample = 'FALSE'],
     tex = TRUE,
     style.tex = style.tex('aer'),
     fitstat = ~ n_m + y_mean,
