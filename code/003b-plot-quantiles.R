@@ -458,7 +458,8 @@
     fe_spec = 'cbg_home + wos + state ^ yr',
     cl_spec = 'county + mos',
     save_parts = FALSE,
-    save_fig = TRUE
+    save_fig = TRUE,
+    file_type = 'svg'
   )
   # Income (Urban)
   inc_urban = plot_q(
@@ -472,7 +473,8 @@
     subset_var = 'i_rural',
     subset = 0,
     save_parts = FALSE,
-    save_fig = TRUE
+    save_fig = TRUE,
+    file_type = 'svg'
   )
   # Income (Rural)
   inc_rural = plot_q(
@@ -486,7 +488,8 @@
     subset_var = 'i_rural',
     subset = 1,
     save_parts = FALSE,
-    save_fig = TRUE
+    save_fig = TRUE,
+    file_type = 'svg'
   )
   # Income (Los Angeles)
   inc_la = plot_q(
@@ -500,7 +503,8 @@
     subset_var = 'i_csa_la',
     subset = 1,
     save_parts = FALSE,
-    save_fig = TRUE
+    save_fig = TRUE,
+    file_type = 'svg'
   )
   # Income (San Francisco)
   inc_sf = plot_q(
@@ -514,7 +518,8 @@
     subset_var = 'i_csa_sf',
     subset = 1,
     save_parts = FALSE,
-    save_fig = TRUE
+    save_fig = TRUE,
+    file_type = 'svg'
   )
 
 
@@ -529,7 +534,8 @@
     fe_spec = 'cbg_home + wos + state ^ yr',
     cl_spec = 'county + mos',
     save_parts = FALSE,
-    save_fig = TRUE
+    save_fig = TRUE,
+    file_type = 'svg'
   )
   # Share Black (Urban)
   bl_urban = plot_q(
@@ -543,7 +549,8 @@
     subset_var = 'i_rural',
     subset = 0,
     save_parts = FALSE,
-    save_fig = TRUE
+    save_fig = TRUE,
+    file_type = 'svg'
   )
   # Share Black (LA)
   bl_la = plot_q(
@@ -557,7 +564,8 @@
     subset_var = 'i_csa_la',
     subset = 1,
     save_parts = FALSE,
-    save_fig = TRUE
+    save_fig = TRUE,
+    file_type = 'svg'
   )
   # Share Black (SF)
   bl_sf = plot_q(
@@ -571,7 +579,8 @@
     subset_var = 'i_csa_sf',
     subset = 1,
     save_parts = FALSE,
-    save_fig = TRUE
+    save_fig = TRUE,
+    file_type = 'svg'
   )
 
 
@@ -586,7 +595,8 @@
     fe_spec = 'cbg_home + wos + state ^ yr',
     cl_spec = 'county + mos',
     save_parts = FALSE,
-    save_fig = TRUE
+    save_fig = TRUE,
+    file_type = 'svg'
   )
   # Share Hispanic (Urban)
   hi_urban = plot_q(
@@ -600,7 +610,8 @@
     subset_var = 'i_rural',
     subset = 0,
     save_parts = FALSE,
-    save_fig = TRUE
+    save_fig = TRUE,
+    file_type = 'svg'
   )
   # Share Hispanic (Rural)
   hi_rural = plot_q(
@@ -614,7 +625,8 @@
     subset_var = 'i_rural',
     subset = 1,
     save_parts = FALSE,
-    save_fig = TRUE
+    save_fig = TRUE,
+    file_type = 'svg'
   )
   # Share Hispanic (LA)
   hi_la = plot_q(
@@ -628,7 +640,8 @@
     subset_var = 'i_csa_la',
     subset = 1,
     save_parts = FALSE,
-    save_fig = TRUE
+    save_fig = TRUE,
+    file_type = 'svg'
   )
   # Share Hispanic (SF)
   hi_sf = plot_q(
@@ -642,7 +655,8 @@
     subset_var = 'i_csa_sf',
     subset = 1,
     save_parts = FALSE,
-    save_fig = TRUE
+    save_fig = TRUE,
+    file_type = 'svg'
   )
 
 
@@ -657,7 +671,8 @@
     fe_spec = 'cbg_home + wos + state ^ yr',
     cl_spec = 'county + mos',
     save_parts = FALSE,
-    save_fig = TRUE
+    save_fig = TRUE,
+    file_type = 'svg'
   )
   # Share White (Urban)
   wh_urban = plot_q(
@@ -671,7 +686,8 @@
     subset_var = 'i_rural',
     subset = 0,
     save_parts = FALSE,
-    save_fig = TRUE
+    save_fig = TRUE,
+    file_type = 'svg'
   )
   # Share White (Rural)
   wh_rural = plot_q(
@@ -685,7 +701,8 @@
     subset_var = 'i_rural',
     subset = 1,
     save_parts = FALSE,
-    save_fig = TRUE
+    save_fig = TRUE,
+    file_type = 'svg'
   )
   # Share White (LA)
   wh_la = plot_q(
@@ -699,7 +716,8 @@
     subset_var = 'i_csa_la',
     subset = 1,
     save_parts = FALSE,
-    save_fig = TRUE
+    save_fig = TRUE,
+    file_type = 'svg'
   )
   # Share White (SF)
   wh_sf = plot_q(
@@ -713,7 +731,8 @@
     subset_var = 'i_csa_sf',
     subset = 1,
     save_parts = FALSE,
-    save_fig = TRUE
+    save_fig = TRUE,
+    file_type = 'svg'
   )
 
 
@@ -728,7 +747,8 @@
     fe_spec = 'cbg_home + wos + state ^ yr',
     cl_spec = 'county + mos',
     save_parts = FALSE,
-    save_fig = TRUE
+    save_fig = TRUE,
+    file_type = 'svg'
   )
   # Income (Urban)
   inc_urban = plot_q(
@@ -742,7 +762,8 @@
     subset_var = 'i_rural',
     subset = 0,
     save_parts = FALSE,
-    save_fig = TRUE
+    save_fig = TRUE,
+    file_type = 'svg'
   )
 
 
@@ -757,7 +778,8 @@
     fe_spec = 'cbg_home + wos + state ^ yr',
     cl_spec = 'county + mos',
     save_parts = FALSE,
-    save_fig = TRUE
+    save_fig = TRUE,
+    file_type = 'svg'
   )
   # Share Black (Urban)
   bl_urban = plot_q(
@@ -771,7 +793,8 @@
     subset_var = 'i_rural',
     subset = 0,
     save_parts = FALSE,
-    save_fig = TRUE
+    save_fig = TRUE,
+    file_type = 'svg'
   )
 
 
@@ -786,7 +809,8 @@
     fe_spec = 'cbg_home + wos + state ^ yr',
     cl_spec = 'county + mos',
     save_parts = FALSE,
-    save_fig = TRUE
+    save_fig = TRUE,
+    file_type = 'svg'
   )
   # Share Hispanic (Urban)
   hi_urban = plot_q(
@@ -800,7 +824,8 @@
     subset_var = 'i_rural',
     subset = 0,
     save_parts = FALSE,
-    save_fig = TRUE
+    save_fig = TRUE,
+    file_type = 'svg'
   )
 
 
@@ -815,7 +840,8 @@
     fe_spec = 'cbg_home + wos + state ^ yr',
     cl_spec = 'county + mos',
     save_parts = FALSE,
-    save_fig = TRUE
+    save_fig = TRUE,
+    file_type = 'svg'
   )
   # Share White (Urban)
   wh_urban = plot_q(
@@ -829,5 +855,6 @@
     subset_var = 'i_rural',
     subset = 0,
     save_parts = FALSE,
-    save_fig = TRUE
+    save_fig = TRUE,
+    file_type = 'svg'
   )
