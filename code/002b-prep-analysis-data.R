@@ -144,3 +144,13 @@
     all.x = FALSE,
     all.y = FALSE
   )
+
+
+# Final variables ------------------------------------------------------------------------
+  # Create an indicator for fire-affected areas
+  full_dt[, fire := cbg_home %in% fire_dt[fire_year %in% 2018:2021, cbg]]
+  # Create week-of-sample and month-of-sample variables
+  full_dt[, `:=`(
+    wos = paste0(yr, '-', sprintf('%02d', wk)),
+    mos = paste0(yr, '-', sprintf('%02d', mo))
+  )]

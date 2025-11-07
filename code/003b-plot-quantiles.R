@@ -13,19 +13,20 @@
   library(pacman)
   p_load(parallel, fastverse, gtools, extrafont, fastDummies, fst, fixest, magrittr, here)
   fastverse_extend(topics = c('DT', 'ST', 'VI'))
-  p_load(specr, patchwork)
+  p_load(patchwork)
   # Fix 'extrafont' issue
   # remove.packages('Rttf2pt1')
   # remotes::install_version("Rttf2pt1", version = "1.3.8")
   # Import desired fonts
-  # font_import(
-  #   paths = '/home/edwardrubin/.fonts',
-  #   recursive = TRUE,
-  #   pattern = 'Fira|Input'
-  # )
+  # Load fonts
+  suppressMessages(
+    font_import(
+      paths = here('fonts'),
+      pattern = 'FiraSansExtra',
+      prompt = FALSE
+    )
+  )
   loadfonts(quiet = TRUE)
-  # Add directory of SafeGraph data
-  dir_sg = '/media/edwardrubin/Data/SafeGraph'
 
 
 # Load data: CSA crosswalk ---------------------------------------------------------------
@@ -44,15 +45,33 @@
 
 # Load data: West-coast data -------------------------------------------------------------
   # Load the dataset
-  full_dt = here(
-    'data-processed', 'for-analysis', 'for-analysis-westcoast.fst'
-    # 'data-processed', 'for-analysis', 'for-analysis-full.fst'
-  ) %>% read_fst(as.data.table = TRUE)
+  full_dt =
+    here(
+      'data-processed', 'for-analysis', 'for-analysis-westcoast.fst'
+      # 'data-processed', 'for-analysis', 'for-analysis-full.fst'
+    ) |>
+    read_fst(as.data.table = TRUE)
+
+
+# Load data: CBG fire exposures ----------------------------------------------------------
+  # Load the dataset
+  fire_dt =
+    here(
+      'data-processed', 'for-analysis', 'cbg-fire-exposure-westcoast.fst'
+    ) |>
+    read_fst(as.data.table = TRUE)
 
 
 # Data work: Quick cleaning --------------------------------------------------------------
+  # Create an indicator for fire-affected areas
+  full_dt[, fire := cbg_home %in% fire_dt[fire_year %in% 2018:2021, cbg]]
   # Create an indicator for rural (more than 50% rural population)
   full_dt[, i_rural := as.integer(pop_rural / (pop_rural + pop_urban) >= 0.5)]
+  # Create week-of-sample and month-of-sample variables
+  full_dt[, `:=`(
+    wos = paste0(yr, '-', sprintf('%02d', wk)),
+    mos = paste0(yr, '-', sprintf('%02d', mo))
+  )]
   # CBG-level dataset
   cbg_dt = full_dt[, .(
     pop = fmedian(pop),
@@ -82,6 +101,15 @@
     i_csa_portland =
       1 * (county %in% csa_xwalk[str_detect(csa_title, 'Portland'), county_code])
   )]
+
+
+
+# Subset to non-fire-affected CBGs -------------------------------------------------------
+# ADJUST Comment out for 'full' sample
+# NOTE Filenames to do not reflect this subsetting; files will be overwritten
+  # Subset
+  full_dt %<>% .[fire == FALSE]
+  full_dt[, fire := NULL]
 
 
 # Function: Het. with many quantile bins -------------------------------------------------
@@ -333,7 +361,7 @@
       qs::qsave(
         est_dt,
         here(
-          'data-figures', 'percentile-graphs-cbg-wk',
+          'data-figures', 'percentile-graphs',
           paste0(
             str_remove_all(het_var, '[^a-z]'), '-',
             'q:', nq,
@@ -353,7 +381,7 @@
       qs::qsave(
         dem_dt,
         here(
-          'data-figures', 'percentile-graphs-cbg-wk',
+          'data-figures', 'percentile-graphs',
           paste0(
             str_remove_all(het_var, '[^a-z]'), '-',
             'q:', nq,
@@ -386,7 +414,7 @@
       )
       # Save
       the_file = here(
-        'figures', 'percentile-graphs-cbg-wk',
+        'figures', 'percentile-graphs',
         paste0(
           fcase(
             outcome == '1 - pct_same_county', 'pctnonco-',
@@ -419,274 +447,274 @@
   }
 
 
-# # Income, % out of county ----------------------------------------------------------------
-#   # Income (All)
-#   inc_all = plot_q(
-#     nq = 50,
-#     outcome = '1 - pct_same_county',
-#     het_var = 'hh_inc',
-#     het_label = 'Income',
-#     smoke = 'any_smoke',
-#     fe_spec = 'cbg_home + wk ^ yr',
-#     cl_spec = 'county + mo',
-#     save_parts = FALSE,
-#     save_fig = TRUE
-#   )
-#   # Income (Urban)
-#   inc_urban = plot_q(
-#     nq = 50,
-#     outcome = '1 - pct_same_county',
-#     het_var = 'hh_inc',
-#     het_label = 'Income',
-#     smoke = 'any_smoke',
-#     fe_spec = 'cbg_home + wk ^ yr',
-#     cl_spec = 'county + mo',
-#     subset_var = 'i_rural',
-#     subset = 0,
-#     save_parts = FALSE,
-#     save_fig = TRUE
-#   )
-#   # Income (Rural)
-#   inc_rural = plot_q(
-#     nq = 50,
-#     outcome = '1 - pct_same_county',
-#     het_var = 'hh_inc',
-#     het_label = 'Income',
-#     smoke = 'any_smoke',
-#     fe_spec = 'cbg_home + wk ^ yr',
-#     cl_spec = 'county + mo',
-#     subset_var = 'i_rural',
-#     subset = 1,
-#     save_parts = FALSE,
-#     save_fig = TRUE
-#   )
-#   # Income (Los Angeles)
-#   inc_la = plot_q(
-#     nq = 50,
-#     outcome = '1 - pct_same_county',
-#     het_var = 'hh_inc',
-#     het_label = 'Income',
-#     smoke = 'any_smoke',
-#     fe_spec = 'cbg_home + wk ^ yr',
-#     cl_spec = 'county + mo',
-#     subset_var = 'i_csa_la',
-#     subset = 1,
-#     save_parts = FALSE,
-#     save_fig = TRUE
-#   )
-#   # Income (San Francisco)
-#   inc_sf = plot_q(
-#     nq = 50,
-#     outcome = '1 - pct_same_county',
-#     het_var = 'hh_inc',
-#     het_label = 'Income',
-#     smoke = 'any_smoke',
-#     fe_spec = 'cbg_home + wk ^ yr',
-#     cl_spec = 'county + mo',
-#     subset_var = 'i_csa_sf',
-#     subset = 1,
-#     save_parts = FALSE,
-#     save_fig = TRUE
-#   )
+# Income, % out of county ----------------------------------------------------------------
+  # Income (All)
+  inc_all = plot_q(
+    nq = 50,
+    outcome = '1 - pct_same_county',
+    het_var = 'hh_inc',
+    het_label = 'Income',
+    smoke = 'any_smoke',
+    fe_spec = 'cbg_home + wos + state ^ yr',
+    cl_spec = 'county + mos',
+    save_parts = FALSE,
+    save_fig = TRUE
+  )
+  # Income (Urban)
+  inc_urban = plot_q(
+    nq = 50,
+    outcome = '1 - pct_same_county',
+    het_var = 'hh_inc',
+    het_label = 'Income',
+    smoke = 'any_smoke',
+    fe_spec = 'cbg_home + wos + state ^ yr',
+    cl_spec = 'county + mos',
+    subset_var = 'i_rural',
+    subset = 0,
+    save_parts = FALSE,
+    save_fig = TRUE
+  )
+  # Income (Rural)
+  inc_rural = plot_q(
+    nq = 50,
+    outcome = '1 - pct_same_county',
+    het_var = 'hh_inc',
+    het_label = 'Income',
+    smoke = 'any_smoke',
+    fe_spec = 'cbg_home + wos + state ^ yr',
+    cl_spec = 'county + mos',
+    subset_var = 'i_rural',
+    subset = 1,
+    save_parts = FALSE,
+    save_fig = TRUE
+  )
+  # Income (Los Angeles)
+  inc_la = plot_q(
+    nq = 50,
+    outcome = '1 - pct_same_county',
+    het_var = 'hh_inc',
+    het_label = 'Income',
+    smoke = 'any_smoke',
+    fe_spec = 'cbg_home + wos + state ^ yr',
+    cl_spec = 'county + mos',
+    subset_var = 'i_csa_la',
+    subset = 1,
+    save_parts = FALSE,
+    save_fig = TRUE
+  )
+  # Income (San Francisco)
+  inc_sf = plot_q(
+    nq = 50,
+    outcome = '1 - pct_same_county',
+    het_var = 'hh_inc',
+    het_label = 'Income',
+    smoke = 'any_smoke',
+    fe_spec = 'cbg_home + wos + state ^ yr',
+    cl_spec = 'county + mos',
+    subset_var = 'i_csa_sf',
+    subset = 1,
+    save_parts = FALSE,
+    save_fig = TRUE
+  )
 
 
-# # Share Black, % out of county -----------------------------------------------------------
-#   # Share Black (All)
-#   bl_all = plot_q(
-#     nq = 50,
-#     outcome = '1 - pct_same_county',
-#     het_var = 'shr_black',
-#     het_label = 'Share Black',
-#     smoke = 'any_smoke',
-#     fe_spec = 'cbg_home + wk ^ yr',
-#     cl_spec = 'county + mo',
-#     save_parts = FALSE,
-#     save_fig = TRUE
-#   )
-#   # Share Black (Urban)
-#   bl_urban = plot_q(
-#     nq = 50,
-#     outcome = '1 - pct_same_county',
-#     het_var = 'shr_black',
-#     het_label = 'Share Black',
-#     smoke = 'any_smoke',
-#     fe_spec = 'cbg_home + wk ^ yr',
-#     cl_spec = 'county + mo',
-#     subset_var = 'i_rural',
-#     subset = 0,
-#     save_parts = FALSE,
-#     save_fig = TRUE
-#   )
-#   # Share Black (LA)
-#   bl_la = plot_q(
-#     nq = 50,
-#     outcome = '1 - pct_same_county',
-#     het_var = 'shr_black',
-#     het_label = 'Share Black',
-#     smoke = 'any_smoke',
-#     fe_spec = 'cbg_home + wk ^ yr',
-#     cl_spec = 'county + mo',
-#     subset_var = 'i_csa_la',
-#     subset = 1,
-#     save_parts = FALSE,
-#     save_fig = TRUE
-#   )
-#   # Share Black (SF)
-#   bl_sf = plot_q(
-#     nq = 50,
-#     outcome = '1 - pct_same_county',
-#     het_var = 'shr_black',
-#     het_label = 'Share Black',
-#     smoke = 'any_smoke',
-#     fe_spec = 'cbg_home + wk ^ yr',
-#     cl_spec = 'county + mo',
-#     subset_var = 'i_csa_sf',
-#     subset = 1,
-#     save_parts = FALSE,
-#     save_fig = TRUE
-#   )
+# Share Black, % out of county -----------------------------------------------------------
+  # Share Black (All)
+  bl_all = plot_q(
+    nq = 50,
+    outcome = '1 - pct_same_county',
+    het_var = 'shr_black',
+    het_label = 'Share Black',
+    smoke = 'any_smoke',
+    fe_spec = 'cbg_home + wos + state ^ yr',
+    cl_spec = 'county + mos',
+    save_parts = FALSE,
+    save_fig = TRUE
+  )
+  # Share Black (Urban)
+  bl_urban = plot_q(
+    nq = 50,
+    outcome = '1 - pct_same_county',
+    het_var = 'shr_black',
+    het_label = 'Share Black',
+    smoke = 'any_smoke',
+    fe_spec = 'cbg_home + wos + state ^ yr',
+    cl_spec = 'county + mos',
+    subset_var = 'i_rural',
+    subset = 0,
+    save_parts = FALSE,
+    save_fig = TRUE
+  )
+  # Share Black (LA)
+  bl_la = plot_q(
+    nq = 50,
+    outcome = '1 - pct_same_county',
+    het_var = 'shr_black',
+    het_label = 'Share Black',
+    smoke = 'any_smoke',
+    fe_spec = 'cbg_home + wos + state ^ yr',
+    cl_spec = 'county + mos',
+    subset_var = 'i_csa_la',
+    subset = 1,
+    save_parts = FALSE,
+    save_fig = TRUE
+  )
+  # Share Black (SF)
+  bl_sf = plot_q(
+    nq = 50,
+    outcome = '1 - pct_same_county',
+    het_var = 'shr_black',
+    het_label = 'Share Black',
+    smoke = 'any_smoke',
+    fe_spec = 'cbg_home + wos + state ^ yr',
+    cl_spec = 'county + mos',
+    subset_var = 'i_csa_sf',
+    subset = 1,
+    save_parts = FALSE,
+    save_fig = TRUE
+  )
 
 
-# # Share Hispanic, % out of county --------------------------------------------------------
-#   # Share Hispanic (All)
-#   hi_all = plot_q(
-#     nq = 50,
-#     outcome = '1 - pct_same_county',
-#     het_var = 'shr_hispanic',
-#     het_label = 'Share Hispanic',
-#     smoke = 'any_smoke',
-#     fe_spec = 'cbg_home + wk ^ yr',
-#     cl_spec = 'county + mo',
-#     save_parts = FALSE,
-#     save_fig = TRUE
-#   )
-#   # Share Hispanic (Urban)
-#   hi_urban = plot_q(
-#     nq = 50,
-#     outcome = '1 - pct_same_county',
-#     het_var = 'shr_hispanic',
-#     het_label = 'Share Hispanic',
-#     smoke = 'any_smoke',
-#     fe_spec = 'cbg_home + wk ^ yr',
-#     cl_spec = 'county + mo',
-#     subset_var = 'i_rural',
-#     subset = 0,
-#     save_parts = FALSE,
-#     save_fig = TRUE
-#   )
-#   # Share Hispanic (Rural)
-#   hi_rural = plot_q(
-#     nq = 50,
-#     outcome = '1 - pct_same_county',
-#     het_var = 'shr_hispanic',
-#     het_label = 'Share Hispanic',
-#     smoke = 'any_smoke',
-#     fe_spec = 'cbg_home + wk ^ yr',
-#     cl_spec = 'county + mo',
-#     subset_var = 'i_rural',
-#     subset = 1,
-#     save_parts = FALSE,
-#     save_fig = TRUE
-#   )
-#   # Share Hispanic (LA)
-#   hi_la = plot_q(
-#     nq = 50,
-#     outcome = '1 - pct_same_county',
-#     het_var = 'shr_hispanic',
-#     het_label = 'Share Hispanic',
-#     smoke = 'any_smoke',
-#     fe_spec = 'cbg_home + wk ^ yr',
-#     cl_spec = 'county + mo',
-#     subset_var = 'i_csa_la',
-#     subset = 1,
-#     save_parts = FALSE,
-#     save_fig = TRUE
-#   )
-#   # Share Hispanic (SF)
-#   hi_sf = plot_q(
-#     nq = 50,
-#     outcome = '1 - pct_same_county',
-#     het_var = 'shr_hispanic',
-#     het_label = 'Share Hispanic',
-#     smoke = 'any_smoke',
-#     fe_spec = 'cbg_home + wk ^ yr',
-#     cl_spec = 'county + mo',
-#     subset_var = 'i_csa_sf',
-#     subset = 1,
-#     save_parts = FALSE,
-#     save_fig = TRUE
-#   )
+# Share Hispanic, % out of county --------------------------------------------------------
+  # Share Hispanic (All)
+  hi_all = plot_q(
+    nq = 50,
+    outcome = '1 - pct_same_county',
+    het_var = 'shr_hispanic',
+    het_label = 'Share Hispanic',
+    smoke = 'any_smoke',
+    fe_spec = 'cbg_home + wos + state ^ yr',
+    cl_spec = 'county + mos',
+    save_parts = FALSE,
+    save_fig = TRUE
+  )
+  # Share Hispanic (Urban)
+  hi_urban = plot_q(
+    nq = 50,
+    outcome = '1 - pct_same_county',
+    het_var = 'shr_hispanic',
+    het_label = 'Share Hispanic',
+    smoke = 'any_smoke',
+    fe_spec = 'cbg_home + wos + state ^ yr',
+    cl_spec = 'county + mos',
+    subset_var = 'i_rural',
+    subset = 0,
+    save_parts = FALSE,
+    save_fig = TRUE
+  )
+  # Share Hispanic (Rural)
+  hi_rural = plot_q(
+    nq = 50,
+    outcome = '1 - pct_same_county',
+    het_var = 'shr_hispanic',
+    het_label = 'Share Hispanic',
+    smoke = 'any_smoke',
+    fe_spec = 'cbg_home + wos + state ^ yr',
+    cl_spec = 'county + mos',
+    subset_var = 'i_rural',
+    subset = 1,
+    save_parts = FALSE,
+    save_fig = TRUE
+  )
+  # Share Hispanic (LA)
+  hi_la = plot_q(
+    nq = 50,
+    outcome = '1 - pct_same_county',
+    het_var = 'shr_hispanic',
+    het_label = 'Share Hispanic',
+    smoke = 'any_smoke',
+    fe_spec = 'cbg_home + wos + state ^ yr',
+    cl_spec = 'county + mos',
+    subset_var = 'i_csa_la',
+    subset = 1,
+    save_parts = FALSE,
+    save_fig = TRUE
+  )
+  # Share Hispanic (SF)
+  hi_sf = plot_q(
+    nq = 50,
+    outcome = '1 - pct_same_county',
+    het_var = 'shr_hispanic',
+    het_label = 'Share Hispanic',
+    smoke = 'any_smoke',
+    fe_spec = 'cbg_home + wos + state ^ yr',
+    cl_spec = 'county + mos',
+    subset_var = 'i_csa_sf',
+    subset = 1,
+    save_parts = FALSE,
+    save_fig = TRUE
+  )
 
 
-# # Share White, % out of county -----------------------------------------------------------
-#   # Share White (All)
-#   wh_all = plot_q(
-#     nq = 50,
-#     outcome = '1 - pct_same_county',
-#     het_var = 'shr_white',
-#     het_label = 'Share White',
-#     smoke = 'any_smoke',
-#     fe_spec = 'cbg_home + wk ^ yr',
-#     cl_spec = 'county + mo',
-#     save_parts = FALSE,
-#     save_fig = TRUE
-#   )
-#   # Share White (Urban)
-#   wh_urban = plot_q(
-#     nq = 50,
-#     outcome = '1 - pct_same_county',
-#     het_var = 'shr_white',
-#     het_label = 'Share White',
-#     smoke = 'any_smoke',
-#     fe_spec = 'cbg_home + wk ^ yr',
-#     cl_spec = 'county + mo',
-#     subset_var = 'i_rural',
-#     subset = 0,
-#     save_parts = FALSE,
-#     save_fig = TRUE
-#   )
-#   # Share White (Rural)
-#   wh_rural = plot_q(
-#     nq = 50,
-#     outcome = '1 - pct_same_county',
-#     het_var = 'shr_white',
-#     het_label = 'Share White',
-#     smoke = 'any_smoke',
-#     fe_spec = 'cbg_home + wk ^ yr',
-#     cl_spec = 'county + mo',
-#     subset_var = 'i_rural',
-#     subset = 1,
-#     save_parts = FALSE,
-#     save_fig = TRUE
-#   )
-#   # Share White (LA)
-#   wh_la = plot_q(
-#     nq = 50,
-#     outcome = '1 - pct_same_county',
-#     het_var = 'shr_white',
-#     het_label = 'Share White',
-#     smoke = 'any_smoke',
-#     fe_spec = 'cbg_home + wk ^ yr',
-#     cl_spec = 'county + mo',
-#     subset_var = 'i_csa_la',
-#     subset = 1,
-#     save_parts = FALSE,
-#     save_fig = TRUE
-#   )
-#   # Share White (SF)
-#   wh_sf = plot_q(
-#     nq = 50,
-#     outcome = '1 - pct_same_county',
-#     het_var = 'shr_white',
-#     het_label = 'Share White',
-#     smoke = 'any_smoke',
-#     fe_spec = 'cbg_home + wk ^ yr',
-#     cl_spec = 'county + mo',
-#     subset_var = 'i_csa_sf',
-#     subset = 1,
-#     save_parts = FALSE,
-#     save_fig = TRUE
-#   )
+# Share White, % out of county -----------------------------------------------------------
+  # Share White (All)
+  wh_all = plot_q(
+    nq = 50,
+    outcome = '1 - pct_same_county',
+    het_var = 'shr_white',
+    het_label = 'Share White',
+    smoke = 'any_smoke',
+    fe_spec = 'cbg_home + wos + state ^ yr',
+    cl_spec = 'county + mos',
+    save_parts = FALSE,
+    save_fig = TRUE
+  )
+  # Share White (Urban)
+  wh_urban = plot_q(
+    nq = 50,
+    outcome = '1 - pct_same_county',
+    het_var = 'shr_white',
+    het_label = 'Share White',
+    smoke = 'any_smoke',
+    fe_spec = 'cbg_home + wos + state ^ yr',
+    cl_spec = 'county + mos',
+    subset_var = 'i_rural',
+    subset = 0,
+    save_parts = FALSE,
+    save_fig = TRUE
+  )
+  # Share White (Rural)
+  wh_rural = plot_q(
+    nq = 50,
+    outcome = '1 - pct_same_county',
+    het_var = 'shr_white',
+    het_label = 'Share White',
+    smoke = 'any_smoke',
+    fe_spec = 'cbg_home + wos + state ^ yr',
+    cl_spec = 'county + mos',
+    subset_var = 'i_rural',
+    subset = 1,
+    save_parts = FALSE,
+    save_fig = TRUE
+  )
+  # Share White (LA)
+  wh_la = plot_q(
+    nq = 50,
+    outcome = '1 - pct_same_county',
+    het_var = 'shr_white',
+    het_label = 'Share White',
+    smoke = 'any_smoke',
+    fe_spec = 'cbg_home + wos + state ^ yr',
+    cl_spec = 'county + mos',
+    subset_var = 'i_csa_la',
+    subset = 1,
+    save_parts = FALSE,
+    save_fig = TRUE
+  )
+  # Share White (SF)
+  wh_sf = plot_q(
+    nq = 50,
+    outcome = '1 - pct_same_county',
+    het_var = 'shr_white',
+    het_label = 'Share White',
+    smoke = 'any_smoke',
+    fe_spec = 'cbg_home + wos + state ^ yr',
+    cl_spec = 'county + mos',
+    subset_var = 'i_csa_sf',
+    subset = 1,
+    save_parts = FALSE,
+    save_fig = TRUE
+  )
 
 
 # Income, distance traveled --------------------------------------------------------------
@@ -697,8 +725,8 @@
     het_var = 'hh_inc',
     het_label = 'Income',
     smoke = 'any_smoke',
-    fe_spec = 'cbg_home + wk ^ yr',
-    cl_spec = 'county + mo',
+    fe_spec = 'cbg_home + wos + state ^ yr',
+    cl_spec = 'county + mos',
     save_parts = FALSE,
     save_fig = TRUE
   )
@@ -709,8 +737,8 @@
     het_var = 'hh_inc',
     het_label = 'Income',
     smoke = 'any_smoke',
-    fe_spec = 'cbg_home + wk ^ yr',
-    cl_spec = 'county + mo',
+    fe_spec = 'cbg_home + wos + state ^ yr',
+    cl_spec = 'county + mos',
     subset_var = 'i_rural',
     subset = 0,
     save_parts = FALSE,
@@ -726,8 +754,8 @@
     het_var = 'shr_black',
     het_label = 'Share Black',
     smoke = 'any_smoke',
-    fe_spec = 'cbg_home + wk ^ yr',
-    cl_spec = 'county + mo',
+    fe_spec = 'cbg_home + wos + state ^ yr',
+    cl_spec = 'county + mos',
     save_parts = FALSE,
     save_fig = TRUE
   )
@@ -738,8 +766,8 @@
     het_var = 'shr_black',
     het_label = 'Share Black',
     smoke = 'any_smoke',
-    fe_spec = 'cbg_home + wk ^ yr',
-    cl_spec = 'county + mo',
+    fe_spec = 'cbg_home + wos + state ^ yr',
+    cl_spec = 'county + mos',
     subset_var = 'i_rural',
     subset = 0,
     save_parts = FALSE,
@@ -755,8 +783,8 @@
     het_var = 'shr_hispanic',
     het_label = 'Share Hispanic',
     smoke = 'any_smoke',
-    fe_spec = 'cbg_home + wk ^ yr',
-    cl_spec = 'county + mo',
+    fe_spec = 'cbg_home + wos + state ^ yr',
+    cl_spec = 'county + mos',
     save_parts = FALSE,
     save_fig = TRUE
   )
@@ -767,8 +795,8 @@
     het_var = 'shr_hispanic',
     het_label = 'Share Hispanic',
     smoke = 'any_smoke',
-    fe_spec = 'cbg_home + wk ^ yr',
-    cl_spec = 'county + mo',
+    fe_spec = 'cbg_home + wos + state ^ yr',
+    cl_spec = 'county + mos',
     subset_var = 'i_rural',
     subset = 0,
     save_parts = FALSE,
@@ -784,8 +812,8 @@
     het_var = 'shr_white',
     het_label = 'Share White',
     smoke = 'any_smoke',
-    fe_spec = 'cbg_home + wk ^ yr',
-    cl_spec = 'county + mo',
+    fe_spec = 'cbg_home + wos + state ^ yr',
+    cl_spec = 'county + mos',
     save_parts = FALSE,
     save_fig = TRUE
   )
@@ -796,8 +824,8 @@
     het_var = 'shr_white',
     het_label = 'Share White',
     smoke = 'any_smoke',
-    fe_spec = 'cbg_home + wk ^ yr',
-    cl_spec = 'county + mo',
+    fe_spec = 'cbg_home + wos + state ^ yr',
+    cl_spec = 'county + mos',
     subset_var = 'i_rural',
     subset = 0,
     save_parts = FALSE,
