@@ -373,7 +373,12 @@ args = commandArgs(trailingOnly = TRUE)
     scale_x_continuous(paste(het_label, 'percentile'), labels = percent) +
     theme_minimal(base_family = 'Fira Sans Extra Condensed', base_size = 8) +
     ggtitle('', subtitle = paste('Quantiles\' median', str_to_lower(het_label)))
-    # Ensure the output directory exists
+    # Ensure the output directories exist
+    dir.create(
+      path = here('figures', 'percentile-graphs'),
+      showWarnings = FALSE,
+      recursive = TRUE
+    )
     dir.create(
       path = here('data-figures', 'percentile-graphs'),
       showWarnings = FALSE,
