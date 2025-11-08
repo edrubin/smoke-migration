@@ -258,27 +258,6 @@
     fitstat = ~ n_m + y_mean,
     digits = 2
   )
-  etable(
-    est_het_visits[lhs = 1, fixef = 3, sample = 'FALSE'],
-    tex = TRUE,
-    style.tex = style.tex('aer'),
-    fitstat = ~ n_m + y_mean,
-    digits = 2
-  )
-  etable(
-    est_het_visits[lhs = 2, fixef = 3, sample = 'FALSE'],
-    tex = TRUE,
-    style.tex = style.tex('aer'),
-    fitstat = ~ n_m + y_mean,
-    digits = 2
-  )
-  etable(
-    est_het_visits[lhs = 3, fixef = 3, sample = 'FALSE'],
-    tex = TRUE,
-    style.tex = style.tex('aer'),
-    fitstat = ~ n_m + y_mean,
-    digits = 2
-  )
   # Clean up
   rm(est_het_pct, est_het_dist)
   invisible(gc())

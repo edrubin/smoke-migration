@@ -6,10 +6,9 @@
   # Packages
   library(pacman)
   p_load(
-    parallel, fastverse, fixest, qs,
+    parallel, fastverse, fixest, qs, stringr,
     magrittr, here
   )
-  fastverse_extend(topics = c('DT', 'ST', 'VI'))
 
 
 # Setup: Regression tables ---------------------------------------------------------------
@@ -20,23 +19,28 @@
     lag2_any_smoke = 'Lag$_2$ of any smoke',
     lag3_any_smoke = 'Lag$_3$ of any smoke',
     lag4_any_smoke = 'Lag$_4$ of any smoke',
+    cbg_home = 'CBG',
     county = 'County',
+    state = 'State',
     mo = 'Month',
     yr = 'Year',
     wk = 'Week',
+    wos = 'Week of sample',
+    mos = 'Month of sample',
     pop = 'CBG population',
+    hospital_visits_total = 'Total hospital visits',
+    `hospital_visits_total/total_visits` = 'Hospital-visits share',
+    `100*hospital_visits_total/total_visits` = 'Hospital-visits share',
     `100*(1 - pct_same_county)` = 'Percent of visits beyond home county',
     `1 - pct_same_county` = 'Percent of visits beyond home county',
+    total_visits = 'Total visits',
+    `total_visits - visits_same_county` = 'Visits beyond home county',
+    visits_same_county = 'Visits within home county',
     dist_median = 'Median distance traveled',
-    dist_p75 = '75$^\\text{th} percentile of distance traveled (km)$',
-    # hh_inc_p = 'Income percentile',
-    # shr_black_p = 'Pct. Black percentile',
-    # shr_hispanic_p = 'Pct. Hispanic percentile',
-    # shr_white_p = 'Pct. White percentile'
-    hh_inc_p = 'Het. percentile',
-    shr_black_p = 'Het. percentile',
-    shr_hispanic_p = 'Het. percentile',
-    shr_white_p = 'Het. percentile'
+    hh_inc_q1 = 'Income quarter 1',
+    hh_inc_q2 = 'Income quarter 2',
+    hh_inc_q3 = 'Income quarter 3',
+    hh_inc_q4 = 'Income quarter 4'
   ))
   # New 'fitstat': Number of observations in millions
   fitstat_register(
@@ -56,49 +60,93 @@
 
 # Load data: Regression results ----------------------------------------------------------
   # Lags: Percent out of county
-  est_lag_pct = qread(
-    file = here('data-results', 'est-lag-pct.qs'),
-    nthreads = 16
-  )
+  est_lag_pct =
+    qread(
+      file = here('data-results', 'est-lag-pct.qs'),
+      nthreads = 16
+    )
   # Lags: 75th percentile distance traveled
-  est_lag_dist = qread(
-    file = here('data-results', 'est-lag-dist.qs'),
-    nthreads = 16
-  )
+  est_lag_dist =
+    qread(
+      file = here('data-results', 'est-lag-dist.qs'),
+      nthreads = 16
+    )
   # Percentile-heterogeneity: Percent out of county
-  est_het_pct = qread(
-    file = here('data-results', 'est-het-pct.qs'),
-    nthreads = 16
-  )
+  est_het_pct =
+    qread(
+      file = here('data-results', 'est-het-pct.qs'),
+      nthreads = 16
+    )
   # Percentile-heterogeneity: 75th percentile distance traveled
-  est_het_dist = qread(
-    file = here('data-results', 'est-het-dist.qs'),
-    nthreads = 16
-  )
+  est_het_dist =
+    qread(
+      file = here('data-results', 'est-het-dist.qs'),
+      nthreads = 16
+    )
+  # Decompose visits: Numerator and denominator
+  est_het_visits =
+    qread(
+      file = here('data-results', 'est-het-frac.qs'),
+      nthreads = 16
+    )
 
 
 # Make tables ----------------------------------------------------------------------------
-  # Main results
+  # Main results: Percent out of county
   etable(
-    # est_lag_pct[1], est_het_pct[1:4],
-    # est_lag_pct[6], est_het_pct[5:8],
-    est_lag_dist[1], est_het_dist[1:4],
-    # est_lag_dist[6], est_het_dist[5:8],
-    tex = TRUE,
-    # style.tex = style.tex('aer'),
-    # fitstat = ~ n_m + y_mean,
-    digits = 2
-  )
-  # Lags
-  etable(
-    est_lag_pct[1:5],
+    est_lag_pct[fixef = 3, sample = 'FALSE', rhs = 1],
+    est_het_pct[fixef = 3, sample = 'FALSE'],
     tex = TRUE,
     style.tex = style.tex('aer'),
-    # fitstat = ~ n_m + y_mean,
+    fitstat = ~ n_m + y_mean,
     digits = 2
   )
+  # Main results: 75th percentile distance traveled
   etable(
-    est_lag_pct[1:5],
+    est_lag_dist[fixef = 3, sample = 'FALSE', rhs = 1],
+    est_het_dist[fixef = 3, sample = 'FALSE'],
+    tex = TRUE,
+    style.tex = style.tex('aer'),
+    fitstat = ~ n_m + y_mean,
+    digits = 2
+  )
+  # Lags: Percent out of county
+  etable(
+    est_lag_pct[fixef = 3, sample = 'FALSE'],
+    tex = TRUE,
+    style.tex = style.tex('aer'),
+    fitstat = ~ n_m + y_mean,
+    digits = 2
+  )
+  # Lags: 75th percentile distance traveled
+  etable(
+    est_lag_dist[fixef = 3, sample = 'FALSE'],
+    tex = TRUE,
+    style.tex = style.tex('aer'),
+    fitstat = ~ n_m + y_mean,
+    digits = 2
+  )
+  # Decompose visits: Numerator and denominator
+  etable(
+    est_het_visits[lhs = 1:3, fixef = 3, rhs = 1, sample = 'FALSE'],
+    tex = TRUE,
+    style.tex = style.tex('aer'),
+    fitstat = ~ n_m + y_mean,
+    digits = 2
+  )
+  # Robustness to FE spec: Percent out of county
+  etable(
+    est_lag_pct[fixef = 2, sample = 'FALSE', rhs = 1],
+    est_het_pct[fixef = 2, sample = 'FALSE'],
+    tex = TRUE,
+    style.tex = style.tex('aer'),
+    fitstat = ~ n_m + y_mean,
+    digits = 2
+  )
+  # Robustness to FE spec: 75th percentile distance traveled
+  etable(
+    est_lag_dist[fixef = 2, sample = 'FALSE', rhs = 1],
+    est_het_dist[fixef = 2, sample = 'FALSE'],
     tex = TRUE,
     style.tex = style.tex('aer'),
     fitstat = ~ n_m + y_mean,
