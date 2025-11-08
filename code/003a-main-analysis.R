@@ -39,6 +39,7 @@
     `1 - pct_same_county` = 'Percent of visits beyond home county',
     total_visits = 'Total visits',
     `total_visits - visits_same_county` = 'Visits beyond home county',
+    visits_same_county = 'Visits within home county',
     dist_median = 'Median distance traveled',
     hh_inc_q1 = 'Income quarter 1',
     hh_inc_q2 = 'Income quarter 2',
@@ -219,9 +220,9 @@
 
 # Regressions: Decompose fraction with heterogeneity -------------------------------------
   # Estimates for numerator (visits to other counties) and denominator (total visits)
-  est_het_total =
+  est_het_visits =
     feols(
-      c(total_visits, total_visits - visits_same_county) ~
+      c(total_visits, total_visits - visits_same_county, visits_same_county) ~
       any_smoke +
       sw(
         1,
@@ -244,21 +245,35 @@
     )
   # Save results
   qsave(
-    x = est_het_total,
+    x = est_het_visits,
     file = here('data-results', 'est-het-frac.qs'),
     preset = 'high',
     nthreads = 16
   )
   # Latex table
   etable(
-    est_het_total[lhs = 1, fixef = 3, sample = 'FALSE'],
+    est_het_visits[lhs = 1:3, fixef = 3, rhs = 1, sample = 'FALSE'],
     tex = TRUE,
     style.tex = style.tex('aer'),
     fitstat = ~ n_m + y_mean,
     digits = 2
   )
   etable(
-    est_het_total[lhs = 2, fixef = 3, sample = 'FALSE'],
+    est_het_visits[lhs = 1, fixef = 3, sample = 'FALSE'],
+    tex = TRUE,
+    style.tex = style.tex('aer'),
+    fitstat = ~ n_m + y_mean,
+    digits = 2
+  )
+  etable(
+    est_het_visits[lhs = 2, fixef = 3, sample = 'FALSE'],
+    tex = TRUE,
+    style.tex = style.tex('aer'),
+    fitstat = ~ n_m + y_mean,
+    digits = 2
+  )
+  etable(
+    est_het_visits[lhs = 3, fixef = 3, sample = 'FALSE'],
     tex = TRUE,
     style.tex = style.tex('aer'),
     fitstat = ~ n_m + y_mean,
