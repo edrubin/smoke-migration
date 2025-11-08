@@ -1,3 +1,8 @@
+#!/usr/bin/env Rscript
+args = commandArgs(trailingOnly = TRUE)
+# NOTE Expecting one (optional) argument of 'full' or 'nofire' (default is 'nofire')
+
+
 # Notes ----------------------------------------------------------------------------------
 #   Goal:   Estimate heterogeneity in smoke-based migration for socioeconomic quantiles.
 #   Time:   ~20 minutes
@@ -11,7 +16,10 @@
 # Setup ----------------------------------------------------------------------------------
   # Packages
   library(pacman)
-  p_load(parallel, fastverse, gtools, extrafont, fastDummies, fst, fixest, magrittr, here)
+  p_load(
+    janitor, svglite, fastverse, gtools, extrafont,
+    fastDummies, fst, fixest, magrittr, here
+  )
   fastverse_extend(topics = c('DT', 'ST', 'VI'))
   p_load(patchwork)
   # Fix 'extrafont' issue
@@ -29,13 +37,27 @@
   loadfonts(quiet = TRUE)
 
 
+# Read meta information ------------------------------------------------------------------
+  # Check whether the passed args want the fire-affected sample or the full sample
+# NOTE Default is 'nofire' (non-fire-affected sample)
+  if (length(args) > 0) {
+    if (tolower(args[1]) == 'full') {
+      fire_sub = 'full'
+    } else {
+      fire_sub = 'nofire'
+    }
+  } else {
+    fire_sub = 'nofire'
+  }
+
+
 # Load data: CSA crosswalk ---------------------------------------------------------------
   # Load the crosswalk
   csa_xwalk =
     here(
       'data-raw', 'census', 'qcew-county-msa-csa-crosswalk.csv'
-    ) %>%
-    fread() %>%
+    ) |>
+    fread() |>
     janitor::clean_names()
   # Pad county codes
   csa_xwalk[, county_code := county_code %>% str_pad(5, 'left', 0)]
@@ -47,8 +69,8 @@
   # Load the dataset
   full_dt =
     here(
-      'data-processed', 'for-analysis', 'for-analysis-westcoast.fst'
-      # 'data-processed', 'for-analysis', 'for-analysis-full.fst'
+      'data-processed', 'for-analysis',
+      'for-analysis-westcoast.fst'
     ) |>
     read_fst(as.data.table = TRUE)
 
@@ -103,12 +125,11 @@
   )]
 
 
-
 # Subset to non-fire-affected CBGs -------------------------------------------------------
-# ADJUST Comment out for 'full' sample
-# NOTE Filenames to do not reflect this subsetting; files will be overwritten
-  # Subset
-  full_dt %<>% .[fire == FALSE]
+  # If requested, subset to non-fire-affected CBGs
+  if (fire_sub == 'nofire') {
+    full_dt %<>% .[fire == FALSE]
+  }
   full_dt[, fire := NULL]
 
 
@@ -355,6 +376,17 @@
     scale_x_continuous(paste(het_label, 'percentile'), labels = percent) +
     theme_minimal(base_family = 'Fira Sans Extra Condensed', base_size = 8) +
     ggtitle('', subtitle = paste('Quantiles\' median', str_to_lower(het_label)))
+    # Ensure the output directories exist
+    dir.create(
+      path = here('figures', 'percentile-graphs'),
+      showWarnings = FALSE,
+      recursive = TRUE
+    )
+    dir.create(
+      path = here('data-figures', 'percentile-graphs'),
+      showWarnings = FALSE,
+      recursive = TRUE
+    )
     # If requested: Save individual parts of the graph
     if (save_parts == TRUE) {
       # Save the datasets required for plotting
@@ -374,7 +406,9 @@
               ),
               ''
             ),
-            '-est_dt.qs'
+            '-est-',
+            fire_sub,
+            '_dt.qs'
           )
         )
       )
@@ -394,7 +428,9 @@
               ),
               ''
             ),
-            '-dem_dt.qs'
+            '-dem',
+            fire_sub,
+            '_dt.qs'
           )
         )
       )
@@ -412,7 +448,7 @@
         label_size = 11,
         nrow = 3
       )
-      # Save
+      # Save the figure
       the_file = here(
         'figures', 'percentile-graphs',
         paste0(
@@ -431,6 +467,8 @@
             ),
             ''
           ),
+          '-',
+          fire_sub,
           paste0('.', file_type)
         )
       )
