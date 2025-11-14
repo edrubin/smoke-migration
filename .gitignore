@@ -6,9 +6,6 @@ code/archive*
 code/OLD*
 code/TODO*
 
-# Unfinished code
-code/000-master.sh
-
 # Raw data
 data-raw/*
 
