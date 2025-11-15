@@ -261,3 +261,35 @@
   # Clean up
   rm(est_het_pct, est_het_dist)
   invisible(gc())
+
+
+# Compare smoke effects on quartiles -----------------------------------------------------
+  # Effect of smoke on distance-traveled quartiles
+  est_dist_p =
+    feols(
+      c(dist_p25, dist_median, dist_p75) ~
+      any_smoke |
+      cbg_home + wos + state ^ yr,
+      data = full_dt[fire == FALSE],
+      lean = TRUE,
+      cluster = ~county + mo ^ yr,
+      weights = ~pop
+    )
+  # Save results
+  qsave(
+    x = est_dist_p,
+    file = here('data-results', 'est-dist-p.qs'),
+    preset = 'high',
+    nthreads = 16
+  )
+  # Latex table
+  etable(
+    est_dist_p,
+    tex = TRUE,
+    style.tex = style.tex('aer'),
+    fitstat = ~ n_m + y_mean,
+    digits = 2
+  )
+  # Clean up
+  rm(est_dist_p)
+  invisible(gc())
