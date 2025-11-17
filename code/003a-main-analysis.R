@@ -293,3 +293,49 @@
   # Clean up
   rm(est_dist_p)
   invisible(gc())
+
+
+# Smoke exposure by demographic ----------------------------------------------------------
+  # Regress smoke exposure on CBG demographics (varying fixed effects)
+  est_smoke =
+    feols(
+      any_smoke ~
+      sw(
+        hh_inc_p,
+        shr_black_p,
+        shr_hispanic_p,
+        shr_white_p
+      ) |
+      sw(
+        1,
+        wos,
+        wos + state ^ yr + state ^ mo,
+        wos + state ^ yr,
+        state ^ wos,
+        state,
+        yr,
+        state ^ yr
+      ),
+      data = full_dt[fire == FALSE],
+      lean = TRUE,
+      cluster = ~county + mo ^ yr,
+      weights = ~pop
+    )
+  # Save results
+  qsave(
+    x = est_smoke,
+    file = here('data-results', 'est-smoke.qs'),
+    preset = 'high',
+    nthreads = 16
+  )
+  # Latex table
+  etable(
+    est_smoke[fixef = 4],
+    tex = TRUE,
+    style.tex = style.tex('aer'),
+    fitstat = ~ n_m + y_mean,
+    digits = 3
+  )
+  # Clean up
+  rm(est_smoke)
+  invisible(gc())
