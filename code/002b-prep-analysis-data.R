@@ -101,6 +101,7 @@
       )
     )
   }
+  rm(j, nu, nq, lab, cols)
   # Expand quantiles factors to indicators
   cbg_dt %<>% dummy_cols(select_columns = names(cbg_dt)[-1])
   # Fix names so they are not duplicated from full dataset

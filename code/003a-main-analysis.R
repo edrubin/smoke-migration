@@ -1,6 +1,6 @@
 # Notes ----------------------------------------------------------------------------------
 #   Goal:   Run main regression-based analyses.
-#   Time:   ~1 minute
+#   Time:   20 minutes
 
 
 # Observations ---------------------------------------------------------------------------
@@ -68,17 +68,20 @@
     feols(
       100 * (1 - pct_same_county) ~
       csw(any_smoke, lag_any_smoke, lag2_any_smoke, lag3_any_smoke, lag4_any_smoke) |
-      cbg_home +
       sw(
-        wos,
-        wos + state ^ yr + state ^ mo,
-        wos + state ^ yr,
-        state ^ wos
+        cbg_home + wos,
+        cbg_home + wos + state ^ yr,
+        cbg_home + wos + state ^ yr + state ^ mo,
+        cbg_home + state ^ wos,
+        cbg_home + county ^ mo + wos,
+        cbg_home + county ^ mo + wos + state ^ yr,
+        cbg_home + county ^ mo + state ^ wos,
+        cbg_home + county ^ mo + county ^ yr + state ^ wos
       ),
       data = full_dt,
       fsplit = ~fire %keep% 'FALSE',
       lean = TRUE,
-      cluster = ~county + mo ^ yr,
+      cluster = ~county + mos,
       weights = ~pop
     )
   # Save results
@@ -90,7 +93,7 @@
   )
   # Latex table
   etable(
-    est_lag_pct[fixef = 3, sample = 'FALSE'],
+    est_lag_pct[fixef = 2, sample = 'FALSE'],
     tex = TRUE,
     style.tex = style.tex('aer'),
     fitstat = ~ n_m + y_mean,
@@ -101,17 +104,20 @@
     feols(
       dist_p75 ~
       csw(any_smoke, lag_any_smoke, lag2_any_smoke, lag3_any_smoke, lag4_any_smoke) |
-      cbg_home +
       sw(
-        wos,
-        wos + state ^ yr + state ^ mo,
-        wos + state ^ yr,
-        state ^ wos
+        cbg_home + wos,
+        cbg_home + wos + state ^ yr,
+        cbg_home + wos + state ^ yr + state ^ mo,
+        cbg_home + state ^ wos,
+        cbg_home + county ^ mo + wos,
+        cbg_home + county ^ mo + wos + state ^ yr,
+        cbg_home + county ^ mo + state ^ wos,
+        cbg_home + county ^ mo + county ^ yr + state ^ wos
       ),
       data = full_dt,
       fsplit = ~fire %keep% 'FALSE',
       lean = TRUE,
-      cluster = ~county + mo ^ yr,
+      cluster = ~county + mos,
       weights = ~pop
     )
   # Save results
@@ -123,7 +129,7 @@
   )
   # Latex table
   etable(
-    est_lag_dist[fixef = 3, sample = 'FALSE'],
+    est_lag_dist[fixef = 2, sample = 'FALSE'],
     tex = TRUE,
     style.tex = style.tex('aer'),
     fitstat = ~ n_m + y_mean,
@@ -146,12 +152,15 @@
         any_smoke:shr_hispanic_p,
         any_smoke:shr_white_p
       ) |
-      cbg_home +
       sw(
-        wos,
-        wos + state ^ yr + state ^ mo,
-        wos + state ^ yr,
-        state ^ wos
+        cbg_home + wos,
+        cbg_home + wos + state ^ yr,
+        cbg_home + wos + state ^ yr + state ^ mo,
+        cbg_home + state ^ wos,
+        cbg_home + county ^ mo + wos,
+        cbg_home + county ^ mo + wos + state ^ yr,
+        cbg_home + county ^ mo + state ^ wos,
+        cbg_home + county ^ mo + county ^ yr + state ^ wos
       ),
       data = full_dt,
       fsplit = ~fire %keep% 'FALSE',
@@ -168,7 +177,7 @@
   )
   # Latex table
   etable(
-    est_het_pct[fixef = 3, sample = 'FALSE'],
+    est_het_pct[fixef = 2, sample = 'FALSE'],
     tex = TRUE,
     style.tex = style.tex('aer'),
     fitstat = ~ n_m + y_mean,
@@ -185,12 +194,15 @@
         any_smoke:shr_hispanic_p,
         any_smoke:shr_white_p
       ) |
-      cbg_home +
       sw(
-        wos,
-        wos + state ^ yr + state ^ mo,
-        wos + state ^ yr,
-        state ^ wos
+        cbg_home + wos,
+        cbg_home + wos + state ^ yr,
+        cbg_home + wos + state ^ yr + state ^ mo,
+        cbg_home + state ^ wos,
+        cbg_home + county ^ mo + wos,
+        cbg_home + county ^ mo + wos + state ^ yr,
+        cbg_home + county ^ mo + state ^ wos,
+        cbg_home + county ^ mo + county ^ yr + state ^ wos
       ),
       data = full_dt,
       fsplit = ~fire %keep% 'FALSE',
@@ -207,7 +219,7 @@
   )
   # Latex table
   etable(
-    est_het_dist[fixef = 3, sample = 'FALSE'],
+    est_het_dist[fixef = 2, sample = 'FALSE'],
     tex = TRUE,
     style.tex = style.tex('aer'),
     fitstat = ~ n_m + y_mean,
@@ -231,12 +243,15 @@
         any_smoke:shr_hispanic_p,
         any_smoke:shr_white_p
       ) |
-      cbg_home +
       sw(
-        wos,
-        wos + state ^ yr + state ^ mo,
-        wos + state ^ yr,
-        state ^ wos
+        cbg_home + wos,
+        cbg_home + wos + state ^ yr,
+        cbg_home + wos + state ^ yr + state ^ mo,
+        cbg_home + state ^ wos,
+        cbg_home + county ^ mo + wos,
+        cbg_home + county ^ mo + wos + state ^ yr,
+        cbg_home + county ^ mo + state ^ wos,
+        cbg_home + county ^ mo + county ^ yr + state ^ wos
       ),
       data = full_dt,
       fsplit = ~fire %keep% 'FALSE',
@@ -252,7 +267,7 @@
   )
   # Latex table
   etable(
-    est_het_visits[lhs = 1:3, fixef = 3, rhs = 1, sample = 'FALSE'],
+    est_het_visits[lhs = 1:3, fixef = 2, rhs = 1, sample = 'FALSE'],
     tex = TRUE,
     style.tex = style.tex('aer'),
     fitstat = ~ n_m + y_mean,
@@ -272,7 +287,7 @@
       cbg_home + wos + state ^ yr,
       data = full_dt[fire == FALSE],
       lean = TRUE,
-      cluster = ~county + mo ^ yr,
+      cluster = ~county + mos,
       weights = ~pop
     )
   # Save results

@@ -56,6 +56,12 @@
     },
     alias = 'Mean of dependent variable'
   )
+  # Formatting for minus signs in LaTeX tables
+  math_minus =
+    function(lines) {
+      gsub('(&[[:blank:]]*)-(?=[0-9]|\\.[0-9])', '\\1$-$', lines, perl = TRUE)
+    }
+  fixest::setFixest_etable(postprocess.tex = math_minus)
 
 
 # Load data: Regression results ----------------------------------------------------------
@@ -94,48 +100,6 @@
 # Make tables ----------------------------------------------------------------------------
   # Main results: Percent out of county
   etable(
-    est_lag_pct[fixef = 3, sample = 'FALSE', rhs = 1],
-    est_het_pct[fixef = 3, sample = 'FALSE'],
-    tex = TRUE,
-    style.tex = style.tex('aer'),
-    fitstat = ~ n_m + y_mean,
-    digits = 2
-  )
-  # Main results: 75th percentile distance traveled
-  etable(
-    est_lag_dist[fixef = 3, sample = 'FALSE', rhs = 1],
-    est_het_dist[fixef = 3, sample = 'FALSE'],
-    tex = TRUE,
-    style.tex = style.tex('aer'),
-    fitstat = ~ n_m + y_mean,
-    digits = 2
-  )
-  # Lags: Percent out of county
-  etable(
-    est_lag_pct[fixef = 3, sample = 'FALSE'],
-    tex = TRUE,
-    style.tex = style.tex('aer'),
-    fitstat = ~ n_m + y_mean,
-    digits = 2
-  )
-  # Lags: 75th percentile distance traveled
-  etable(
-    est_lag_dist[fixef = 3, sample = 'FALSE'],
-    tex = TRUE,
-    style.tex = style.tex('aer'),
-    fitstat = ~ n_m + y_mean,
-    digits = 2
-  )
-  # Decompose visits: Numerator and denominator
-  etable(
-    est_het_visits[lhs = 1:3, fixef = 3, rhs = 1, sample = 'FALSE'],
-    tex = TRUE,
-    style.tex = style.tex('aer'),
-    fitstat = ~ n_m + y_mean,
-    digits = 2
-  )
-  # Robustness to FE spec: Percent out of county
-  etable(
     est_lag_pct[fixef = 2, sample = 'FALSE', rhs = 1],
     est_het_pct[fixef = 2, sample = 'FALSE'],
     tex = TRUE,
@@ -143,10 +107,112 @@
     fitstat = ~ n_m + y_mean,
     digits = 2
   )
-  # Robustness to FE spec: 75th percentile distance traveled
+  # Main results: 75th percentile distance traveled
   etable(
     est_lag_dist[fixef = 2, sample = 'FALSE', rhs = 1],
     est_het_dist[fixef = 2, sample = 'FALSE'],
+    tex = TRUE,
+    style.tex = style.tex('aer'),
+    fitstat = ~ n_m + y_mean,
+    digits = 2
+  )
+  # Lags: Percent out of county
+  etable(
+    est_lag_pct[fixef = 2, sample = 'FALSE'],
+    tex = TRUE,
+    style.tex = style.tex('aer'),
+    fitstat = ~ n_m + y_mean,
+    digits = 2
+  )
+  # Lags: 75th percentile distance traveled
+  etable(
+    est_lag_dist[fixef = 2, sample = 'FALSE'],
+    tex = TRUE,
+    style.tex = style.tex('aer'),
+    fitstat = ~ n_m + y_mean,
+    digits = 2
+  )
+  # Decompose visits: Numerator and denominator
+  etable(
+    est_het_visits[lhs = 1:3, fixef = 2, rhs = 1, sample = 'FALSE'],
+    tex = TRUE,
+    style.tex = style.tex('aer'),
+    fitstat = ~ n_m + y_mean,
+    digits = 2
+  )
+  # Robustness to FE spec: Percent out of county
+  etable(
+    est_lag_pct[fixef = 5, sample = 'FALSE', rhs = 1],
+    est_het_pct[fixef = 5, sample = 'FALSE'],
+    tex = TRUE,
+    style.tex = style.tex('aer'),
+    fitstat = ~ n_m + y_mean,
+    digits = 2
+  )
+  # Robustness to FE spec: 75th percentile distance traveled
+  etable(
+    est_lag_dist[fixef = 5, sample = 'FALSE', rhs = 1],
+    est_het_dist[fixef = 5, sample = 'FALSE'],
+    tex = TRUE,
+    style.tex = style.tex('aer'),
+    fitstat = ~ n_m + y_mean,
+    digits = 2
+  )
+  # Percent out-of-county, larger FE robustness table
+  # NOTE: Heterogeneity dimensions will get their own table panels
+  etable(
+    est_het_pct[fixef = 1:8, sample = 'FALSE', rhs = 1],
+    tex = TRUE,
+    style.tex = style.tex('aer'),
+    fitstat = ~ n_m + y_mean,
+    digits = 2
+  )
+  etable(
+    est_het_pct[fixef = 1:8, sample = 'FALSE', rhs = 2],
+    tex = TRUE,
+    style.tex = style.tex('aer'),
+    fitstat = ~ n_m + y_mean,
+    digits = 2
+  )
+  etable(
+    est_het_pct[fixef = 1:8, sample = 'FALSE', rhs = 3],
+    tex = TRUE,
+    style.tex = style.tex('aer'),
+    fitstat = ~ n_m + y_mean,
+    digits = 2
+  )
+  etable(
+    est_het_pct[fixef = 1:8, sample = 'FALSE', rhs = 4],
+    tex = TRUE,
+    style.tex = style.tex('aer'),
+    fitstat = ~ n_m + y_mean,
+    digits = 2
+  )
+  # Distances, larger FE robustness table
+  # NOTE: Heterogeneity dimensions will get their own table panels
+  etable(
+    est_het_dist[fixef = 1:8, sample = 'FALSE', rhs = 1],
+    tex = TRUE,
+    style.tex = style.tex('aer'),
+    fitstat = ~ n_m + y_mean,
+    digits = 2
+  )
+  etable(
+    est_het_dist[fixef = 1:8, sample = 'FALSE', rhs = 2],
+    tex = TRUE,
+    style.tex = style.tex('aer'),
+    fitstat = ~ n_m + y_mean,
+    digits = 2
+  )
+  etable(
+    est_het_dist[fixef = 1:8, sample = 'FALSE', rhs = 3],
+    tex = TRUE,
+    style.tex = style.tex('aer'),
+    fitstat = ~ n_m + y_mean,
+    digits = 2
+  )
+  etable(
+    est_het_dist[fixef = 1:8, sample = 'FALSE', rhs = 4],
     tex = TRUE,
     style.tex = style.tex('aer'),
     fitstat = ~ n_m + y_mean,

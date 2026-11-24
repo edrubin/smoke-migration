@@ -11,6 +11,32 @@
 # Load and prep data ---------------------------------------------------------------------
   # Source the script that loads and prepares the data
   here::here('code', '002b-prep-analysis-data.R') |> source()
+  # Load (processed) predicted PM data
+  exp_dt =
+    here('data-processed', 'pm-smoke-burke', 'cbg-week-pm-smoke.fst') |>
+    read_fst(as.data.table = TRUE)
+  # Merge with analysis dataset
+  full_dt =
+    merge(
+      x = full_dt,
+      y = exp_dt[, .(
+        cbg_home, date_start,
+        smoke_pm_home, smoke_pm_visits, smoke_pm_ownco_visits, smoke_pm_otherco_visits
+      )],
+      by = c('cbg_home', 'date_start'),
+      all.x = TRUE,
+      all.y = FALSE
+    )
+  rm(exp_dt)
+  # Add binary income groups
+# ADJUST: Choose whether we want to compare above/below median or top/bottom quartiles
+  full_dt[, upper_inc := 1 * (hh_inc_p > .5)]; splt_nm = 'median'
+  # full_dt[hh_inc_p >= .75, upper_inc := 1]
+  # full_dt[hh_inc_p <= .25, upper_inc := 0]
+  # splt_nm = 'q1q4'
+# ADJUST: Choose svg or pdf
+  file_type = 'svg'
+  # file_type = 'pdf'
 
 
 # Set up event study: Pair smoke and non-smoke weeks within CBG ------------------------
@@ -170,55 +196,50 @@
       c(
         '1 - pct_same_county',
         '1 - pct_same_state',
-        'dist_median',
-        'dist_p75',
-        'total_visits',
-        'total_visits - visits_same_county',
-        'total_visits - visits_same_state',
-        'any_smoke'
+        'any_smoke',
+        'smoke_pm_home',
+        'smoke_pm_visits',
+        'smoke_pm_ownco_visits',
+        'smoke_pm_otherco_visits'
       ),
     label =
       c(
         'Out migration:\nPercentage of visits outside of home county',
         'Out migration:\nPercentage of visits outside of home state',
-        'Out migration:\nMedian distance from home (km)',
-        'Out migration:\n Distance from home (km, 75th pcntl.)',
-        ' \nTotal POI visits',
-        ' \nVisits to non-home counties',
-        ' \nVisits to non-home states',
-        'Smoke exposure:\nPercentage of population facing smoke'
+        'Smoke exposure:\nPercentage of population facing smoke',
+        'Smoke-based PM2.5 exposure:\n CBG local ambient (ug/m3)',
+        'Smoke-based PM2.5 exposure:\n Derived from CBG visits (ug/m3)',
+        'Smoke-based PM2.5 exposure:\n From visits within own county (ug/m3)',
+        'Smoke-based PM2.5 exposure:\n From visits within other counties (ug/m3)'
       ),
     format =
       c(
         percent,
         percent,
+        percent,
         comma,
         comma,
         comma,
-        comma,
-        comma,
-        percent
+        comma
       ),
     filename =
       c(
         'event-study-county',
         'event-study-state',
-        'event-study-dist',
-        'event-study-dist75',
-        'event-study-total-visits',
-        'event-study-visits-other-county',
-        'event-study-visits-other-state',
-        'event-study-smoke'
+        'event-study-smoke',
+        'event-study-pm-home',
+        'event-study-pm-visits',
+        'event-study-pm-ownco',
+        'event-study-pm-otherco'
       ),
     clr =
       c(
         viridis::magma(100)[22],
         viridis::magma(100)[22],
-        viridis::magma(100)[22],
-        viridis::magma(100)[22],
         viridis::magma(100)[42],
         viridis::magma(100)[62],
         viridis::magma(100)[62],
+        viridis::magma(100)[72],
         viridis::magma(100)[72]
       )
   )
@@ -247,35 +268,59 @@
       feols(
         event_f,
         data = event_trt[county != '06073' & i_rural == 0 & !(cbg_home %in% fire_dt$cbg)],
+        fsplit = ~upper_inc,
         cluster = ~county + mo ^ yr,
         weights = ~pop
       )
     # Create dataset for the event study: estimates and CIs
     plot_dt = cbind(
-      event_est %>% coeftable() %>% extract(1:4),
-      event_est %>% confint() %>% extract(4:5)
+      event_est |> coeftable() |> extract(, c(1, 3:6)),
+      event_est |> confint() |> extract(, 6:7)
     )
     setDT(plot_dt)
-    setnames(plot_dt, c('id', 'outcome', 'period', 'estimate', 'conf_low', 'conf_high'))
+    setnames(
+      plot_dt,
+      c('id', 'sample', 'outcome', 'period', 'estimate', 'conf_low', 'conf_high')
+    )
     # Add omitted period
     plot_dt = rbindlist(list(
       plot_dt,
-      data.table(
-        id = seq_along(outcome_dt$var),
-        outcome = outcome_dt$var,
-        period = p_drop,
-        estimate = 0,
-        conf_low = 0,
-        conf_high = 0
-      )
+      plot_dt[period == 'p01'] |>
+        fmutate(
+          period = p_drop,
+          estimate = 0,
+          conf_low = 0,
+          conf_high = 0
+        )
     ), use.names = TRUE, fill = TRUE)
     # Make event time
     setorder(plot_dt, id, period)
-    plot_dt[, time := rep(-n_pre:n_post, outcome_dt[, .N])]
+    plot_dt[, time := rep(-n_pre:n_post), by = id]
     # Iterate over outcomes to plot
     plot_list = lapply(
-      X = seq_len(outcome_dt[, .N]),
+      X = seq_len(plot_dt[, fndistinct(id)]),
       FUN = function(i) {
+        # Grab the info for the current plot
+        plot_info = plot_dt[id == i, .(id, sample, outcome)][1,]
+        # Merge with outcome info
+        plot_info = merge(plot_info, outcome_dt, by.x = 'outcome', by.y = 'var')
+        # Amend filename with sample information
+        plot_info[, `:=`(
+          filename = paste0(
+            outcome_dt$filename[i],
+            '-',
+            ifelse(
+              str_detect(plot_info$sample |> str_to_lower(), 'full'),
+              'full',
+              paste0(
+                splt_nm,
+                plot_info$sample
+              )
+            ),
+            '.',
+            file_type
+          )
+        )]
         # Plot
         event_study =
           ggplot(
@@ -290,32 +335,29 @@
           geom_vline(xintercept = 0, size = .25, linetype = 'dashed') +
           scale_x_continuous('Weeks relative to first smoke exposure') +
           scale_y_continuous(
-            name = outcome_dt$label[i],
-            labels = outcome_dt$format[[i]]
+            name = plot_info$label,
+            labels = plot_info$format
           ) +
           geom_ribbon(
             color = NA,
-            fill = outcome_dt$clr[i],
+            fill = plot_info$clr,
             position = position_dodge2(width = .3),
             alpha = .1
           ) +
           geom_pointrange(
             position = position_dodge2(width = .3),
-            color = outcome_dt$clr[i]
+            color = plot_info$clr
           ) +
           theme_minimal(
             base_family = 'Fira Sans Extra Condensed',
             base_size = 8
           ) +
           theme(legend.position = 'none')
-        # event_study
         # Save
         ggsave(
           path = here('figures', 'event-study'),
-          # filename = paste0(outcome_dt$filename[i], '.pdf'),
-          # device = cairo_pdf,
-          filename = paste0(outcome_dt$filename[i], '.svg'),
-          device = svglite::svglite,
+          filename = plot_info$filename,
+          device = ifelse(file_type == 'svg', svglite::svglite, cairo_pdf),
           plot = event_study,
           height = 2.25,
           width = 6.5,
@@ -352,18 +394,22 @@
     # Create dataset for plotting event study
     # Build dataset with estimates and confidence intervals
     plot_dt = cbind(
-      event_est %>% coeftable() %>% extract(, 3:5),
-      event_est %>% confint() %>% extract(, 5:6)
+      event_est |> coeftable() |> extract(, c(1, 3:6)),
+      event_est |> confint() |> extract(, 6:7)
     )
     setDT(plot_dt)
-    setnames(plot_dt, c('sample', 'period', 'estimate', 'conf.low', 'conf.high'))
+    setnames(
+      plot_dt,
+      c('id', 'sample', 'lhs', 'period', 'estimate', 'conf.low', 'conf.high')
+    )
     # Drop intercept
     plot_dt %<>% fsubset(period != '(Intercept)')
     # Add omitted period
+# FIXME
     plot_dt = rbindlist(list(
       plot_dt,
       data.table(
-        sample = c('nosmoke', 'smoke'),
+        sample = plot_dt[period == 'p01', sample] ,
         period = rep(p_drop, 2),
         estimate = rep(0, 2),
         conf.low = rep(0, 2),
@@ -385,16 +431,7 @@
     geom_vline(xintercept = 0, size = .25, linetype = 'dashed') +
     scale_x_continuous('Weeks relative to first smoke exposure') +
     scale_y_continuous(
-      name = c(
-        'Out migration:\nPercentage of visits outside of home county',
-        'Out migration:\nPercentage of visits outside of home state',
-        'Out migration:\nMedian distance from home (km)',
-        'Out migration:\n Distance from home (km, 75th pcntl.)',
-        'Total POI visits',
-        'Visits to non-home counties',
-        'Visits to non-home states',
-        'Smoke exposure:\nPercentage of population facing smoke'
-      )[i],
+      name = outcome_dt$label[i],
       labels = list(
         percent,
         percent,

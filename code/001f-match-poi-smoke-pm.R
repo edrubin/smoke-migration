@@ -1,7 +1,7 @@
 # Notes ----------------------------------------------------------------------------------
 #   Goal:   Merge SafeGraph POI weekly visits with grid of smoke-based PM exposure.
 #           NOTE: Source of data is Burke et al. (2022, Env. Sci. & Technology)
-#   Time:   Under two hours?
+#   Time:   22 minutes with parallelization
 
 
 # Data notes -----------------------------------------------------------------------------
@@ -15,7 +15,7 @@
 # Setup ----------------------------------------------------------------------------------
   # Packages
   library(pacman)
-  p_load(tidyverse, fastverse, parallel, here)
+  p_load(tidyverse, fastverse, parallel, here, fst)
   fastverse_extend(topics = c('ST', 'TV', 'IO', 'DT', 'SP'))
 
 
@@ -210,21 +210,52 @@
       rbindlist(use.names = TRUE, fill = TRUE)
       # Drop 'w_dt'
       rm(w_dt)
+      # Add county FIPS for own-vs-other county calculations
+      w_pm[, `:=`(
+        co_poi = str_sub(cbg_poi, 1, 5),
+        co_home = str_sub(cbg_home, 1, 5)
+      )]
       # Summarize PM exposure tables (by home for POI visits) and merge!
-      w_dt = merge(
-        x = w_pm_cbg[, .(smoke_pm_home = fmean(x = pm)), by = .(cbg_home = cbg)],
-        y = w_pm[, .(
-          smoke_pm_visits = fmean(x = pm, w = visits),
-          date_start = w
-        ), by = cbg_home],
-        by = 'cbg_home',
-        all.x = TRUE,
-        all.y = TRUE
-      )
+      w_dt =
+        merge(
+          x = w_pm_cbg[, .(
+            smoke_pm_home = fmean(x = pm),
+            smoke_pm_home_nz = fmean(x = pm > 0)
+          ), by = .(cbg_home = cbg)],
+          y = w_pm[, .(
+            smoke_pm_visits = fmean(x = pm, w = visits),
+            smoke_pm_visits_nz = fmean(x = pm > 0, w = visits),
+            date_start = w
+          ), by = cbg_home],
+          by = 'cbg_home',
+          all.x = TRUE,
+          all.y = TRUE
+        ) |>
+        merge(
+          # Calculate smoke-PM based upon own-county visits
+          y = w_pm[co_poi == co_home, .(
+            smoke_pm_ownco_visits = fmean(x = pm, w = visits),
+            smoke_pm_ownco_visits_nz = fmean(x = pm > 0, w = visits)
+          ), by = cbg_home],
+          by = 'cbg_home',
+          all.x = TRUE,
+          all.y = TRUE
+        ) |>
+        merge(
+          # Calculate smoke-PM based upon other-county visits
+          # Note: NAs occur when a CBG has no visits to other counties
+          y = w_pm[co_poi != co_home, .(
+            smoke_pm_otherco_visits = fmean(x = pm, w = visits),
+            smoke_pm_otherco_visits_nz = fmean(x = pm > 0, w = visits)
+          ), by = cbg_home],
+          by = 'cbg_home',
+          all.x = TRUE,
+          all.y = TRUE
+        )
       # Return the week's summary
       return(w_dt)
     })
-  # Convert list of daily CBG PM exposure measures to data table
+  # Convert list of CBG PM exposure measures to data table
   # Note: This step is to fix missing dates (when a CBG had no visits)
   exp_dt = lapply(
     X = seq_along(smoke_pm),
@@ -240,9 +271,9 @@
     }
   ) %>% rbindlist(use.names = TRUE, fill = TRUE)
   # Find the two CBGs that did not match a grid cell
-  tmp = exp_dt[, .N, cbg_home]
+  count_dt = exp_dt[, .N, cbg_home]
   # Drop the two CBGs
-  exp_dt %<>% .[!(cbg_home %in% tmp[N < 209, cbg_home])]
+  exp_dt %<>% .[!(cbg_home %in% count_dt[N < 209, cbg_home])]
 
 
 # Save -----------------------------------------------------------------------------------
