@@ -11,6 +11,7 @@
 # Load and prep data ---------------------------------------------------------------------
   # Source the script that loads and prepares the data
   here::here('code', '002b-prep-analysis-data.R') |> source()
+  pacman::p_load(colorspace)
   # Load (processed) predicted PM data
   exp_dt =
     here('data-processed', 'pm-smoke-burke', 'cbg-week-pm-smoke.fst') |>
@@ -30,10 +31,13 @@
   rm(exp_dt)
   # Add binary income groups
 # ADJUST: Choose whether we want to compare above/below median or top/bottom quartiles
-  full_dt[, upper_inc := 1 * (hh_inc_p > .5)]; splt_nm = 'median'
-  # full_dt[hh_inc_p >= .75, upper_inc := 1]
-  # full_dt[hh_inc_p <= .25, upper_inc := 0]
-  # splt_nm = 'q1q4'
+  # full_dt[, upper_inc := 1 * (hh_inc_p > .5)]
+  # splt_nm = 'median'
+  # splt_labels = c('Below median', 'Above median')
+  full_dt[hh_inc_p >= .75, upper_inc := 1]
+  full_dt[hh_inc_p <= .25, upper_inc := 0]
+  splt_nm = 'q1q4'
+  splt_labels = c('First quartile', 'Fourth quartile')
 # ADJUST: Choose svg or pdf
   file_type = 'svg'
   # file_type = 'pdf'
@@ -190,6 +194,8 @@
 
 
 # Define variables of interest -----------------------------------------------------------
+  # Define the color palette
+  clrs = viridis::magma(100)[c(22, 42, 62, 72)]
   # Outcomes
   outcome_dt = data.table(
     var =
@@ -234,13 +240,10 @@
       ),
     clr =
       c(
-        viridis::magma(100)[22],
-        viridis::magma(100)[22],
-        viridis::magma(100)[42],
-        viridis::magma(100)[62],
-        viridis::magma(100)[62],
-        viridis::magma(100)[72],
-        viridis::magma(100)[72]
+        clrs[1],
+        clrs[3],
+        clrs[4],
+        rep(clrs[2], 4)
       )
   )
   # Excluded period: 1 before the end of the pre-period
@@ -298,37 +301,32 @@
     plot_dt[, time := rep(-n_pre:n_post), by = id]
     # Iterate over outcomes to plot
     plot_list = lapply(
-      X = seq_len(plot_dt[, fndistinct(id)]),
+      X = seq_len(outcome_dt[, fndistinct(var)]),
       FUN = function(i) {
+        # Create two figures: 1, full sample; 2, sub-group comparisons
+        # Subset results data to current outcome
+        out_dt = plot_dt[outcome == outcome_dt$var[i]]
+        # Now grab full and het samples
+        all_dt = out_dt[str_detect(sample, 'Full')]
+        het_dt = out_dt[!str_detect(sample, 'Full')]
         # Grab the info for the current plot
         plot_info = plot_dt[id == i, .(id, sample, outcome)][1,]
         # Merge with outcome info
-        plot_info = merge(plot_info, outcome_dt, by.x = 'outcome', by.y = 'var')
+        plot_info = outcome_dt[i, ]
         # Amend filename with sample information
         plot_info[, `:=`(
-          filename = paste0(
-            outcome_dt$filename[i],
-            '-',
-            ifelse(
-              str_detect(plot_info$sample |> str_to_lower(), 'full'),
-              'full',
-              paste0(
-                splt_nm,
-                plot_info$sample
-              )
-            ),
-            '.',
-            file_type
-          )
+          f_all = paste0(outcome_dt$filename[i], '-', 'full', '.', file_type),
+          f_het = paste0(outcome_dt$filename[i], '-', splt_nm, '.', file_type)
         )]
-        # Plot
-        event_study =
+        # Full-sample plot
+        event_full =
           ggplot(
-            data = plot_dt[id == i],
+            data = all_dt,
             aes(
               x = time,
               y = estimate,
-              ymin = conf_low, ymax = conf_high,
+              ymin = conf_low,
+              ymax = conf_high,
             )
           ) +
           geom_hline(yintercept = 0, size = .25) +
@@ -336,7 +334,7 @@
           scale_x_continuous('Weeks relative to first smoke exposure') +
           scale_y_continuous(
             name = plot_info$label,
-            labels = plot_info$format
+            labels = plot_info$format[[1]]
           ) +
           geom_ribbon(
             color = NA,
@@ -353,152 +351,75 @@
             base_size = 8
           ) +
           theme(legend.position = 'none')
-        # Save
+        # Save full-sample plot
         ggsave(
           path = here('figures', 'event-study'),
-          filename = plot_info$filename,
+          filename = plot_info$f_all,
           device = ifelse(file_type == 'svg', svglite::svglite, cairo_pdf),
-          plot = event_study,
+          plot = event_full,
           height = 2.25,
+          width = 6.5,
+          dpi = 450
+        )
+        # Split-sample plot
+        event_het =
+          ggplot(
+            data = het_dt,
+            aes(
+              x = time,
+              y = estimate,
+              ymin = conf_low,
+              ymax = conf_high,
+              group = sample
+            )
+          ) +
+          geom_hline(yintercept = 0, size = .25) +
+          geom_vline(xintercept = 0, size = .25, linetype = 'dashed') +
+          scale_x_continuous('Weeks relative to first smoke exposure') +
+          scale_y_continuous(
+            name = plot_info$label,
+            labels = plot_info$format[[1]]
+          ) +
+          geom_ribbon(
+            aes(fill = sample),
+            color = NA,
+            position = position_dodge2(width = .3),
+            alpha = .1
+          ) +
+          geom_pointrange(
+            aes(color = sample),
+            position = position_dodge2(width = .3),
+          ) +
+          theme_minimal(
+            base_family = 'Fira Sans Extra Condensed',
+            base_size = 8
+          ) +
+          scale_color_manual(
+            name = 'Income group:',
+            labels = splt_labels,
+            values = c(
+              plot_info$clr |> darken(amount = .2, method = 'relative'),
+              plot_info$clr |> lighten(amount = .4, method = 'relative')
+            )
+          ) +
+          scale_fill_manual(
+            name = 'Income group:',
+            labels = splt_labels,
+            values = c(
+              plot_info$clr |> darken(amount = .2, method = 'relative'),
+              plot_info$clr |> lighten(amount = .4, method = 'relative')
+            )
+          ) +
+          theme(legend.position = 'bottom')
+        # Save full-sample plot
+        ggsave(
+          path = here('figures', 'event-study'),
+          filename = plot_info$f_het,
+          device = ifelse(file_type == 'svg', svglite::svglite, cairo_pdf),
+          plot = event_het,
+          height = 2.6,
           width = 6.5,
           dpi = 450
         )
       }
     )
-
-
-# Raw coefficients -----------------------------------------------------------------------
-  # Iterate over outcome variables
-  for (i in 1:8) {
-    # Build formula
-    event_f =
-      paste0(
-        # Outcome variables
-        outcome_vars[i], ' ~ ',
-        # Event-study period indicators (excluding p_drop)
-        str_subset(names(event_trt), '^p[0-9]{2}$') |>
-          str_subset(p_drop, negate = TRUE) |>
-          paste(collapse = ' + ')
-      ) |>
-      as.formula()
-    # Estimate!
-    event_est =
-      feols(
-        event_f,
-        # data = event_trt[county != '06073' & i_rural == 0],
-        data = event_trt[county != '06073' & i_rural == 0 & !(cbg_home %in% fire_dt$cbg)],
-        cluster = ~county + mo ^ yr,
-        weights = ~pop,
-        split = ~subset
-      )
-    # Create dataset for plotting event study
-    # Build dataset with estimates and confidence intervals
-    plot_dt = cbind(
-      event_est |> coeftable() |> extract(, c(1, 3:6)),
-      event_est |> confint() |> extract(, 6:7)
-    )
-    setDT(plot_dt)
-    setnames(
-      plot_dt,
-      c('id', 'sample', 'lhs', 'period', 'estimate', 'conf.low', 'conf.high')
-    )
-    # Drop intercept
-    plot_dt %<>% fsubset(period != '(Intercept)')
-    # Add omitted period
-# FIXME
-    plot_dt = rbindlist(list(
-      plot_dt,
-      data.table(
-        sample = plot_dt[period == 'p01', sample] ,
-        period = rep(p_drop, 2),
-        estimate = rep(0, 2),
-        conf.low = rep(0, 2),
-        conf.high = rep(0, 2)
-      )
-    ))
-    # Make event time
-    setorder(plot_dt, sample, period)
-    plot_dt[, time := rep(-n_pre:n_post, 2)]
-    # Plot
-    event_study = ggplot(
-      data = plot_dt,
-      aes(
-        x = time, y = estimate, ymin = conf.low, ymax = conf.high,
-        fill = sample, color = sample
-      )
-    ) +
-    geom_hline(yintercept = 0, size = .25) +
-    geom_vline(xintercept = 0, size = .25, linetype = 'dashed') +
-    scale_x_continuous('Weeks relative to first smoke exposure') +
-    scale_y_continuous(
-      name = outcome_dt$label[i],
-      labels = list(
-        percent,
-        percent,
-        comma,
-        comma,
-        comma,
-        comma,
-        comma,
-        percent
-      )[[i]]
-    ) +
-    geom_ribbon(
-      aes(alpha = sample),
-      color = NA, position = position_dodge2(width = .3)
-    ) +
-    geom_pointrange(position = position_dodge2(width = .3)) +
-    theme_minimal(base_family = 'Fira Sans Extra Condensed', base_size = 9) +
-    scale_fill_manual(
-      '',
-      values = c(viridis::magma(100)[82], viridis::magma(100)[22]),
-      labels = c('No smoke', 'Smoke')
-    ) +
-    scale_color_manual(
-      '',
-      values = c(viridis::magma(100)[82], viridis::magma(100)[22]),
-      labels = c('No smoke', 'Smoke')
-    ) +
-    scale_alpha_manual(
-      '',
-      values = c(.1, .04),
-      labels = c('No smoke', 'Smoke')
-    ) +
-    theme(legend.position = 'none')
-    # Plot
-    event_study
-    # Save
-    ggsave(
-      filename = here(
-        'figures', 'event-study-raw',
-        c(
-          'event-study-county.pdf',
-          'event-study-state.pdf',
-          'event-study-dist.pdf',
-          'event-study-dist75.pdf',
-          'event-study-total-visits.pdf',
-          'event-study-visits-other-county.pdf',
-          'event-study-visits-other-state.pdf',
-          'event-study-smoke.pdf'
-        )[i]
-      ),
-      plot = event_study,
-      height = 3,
-      width = 6.4,
-      dpi = 450
-    )
-  }
-  # Save a legend that matches the plots
-  ggsave(
-    path = here('figures', 'event-study-raw'),
-    filename = 'event-study-legend.pdf',
-    plot = (
-        event_study +
-        theme_minimal(base_family = 'Fira Sans Extra Condensed', base_size = 12) +
-        theme(legend.position = 'bottom')
-      ) |>
-      ggpubr::get_legend() |>
-      ggpubr::as_ggplot(),
-    height = 0.5,
-    width = 2.5
-  )
